@@ -262,6 +262,65 @@ class OrdemServicoServiceTest {
     }
 
     @Test
+    void deveAbrirOrdemServicoComItensNaAbertura() {
+        Cliente cliente = criarClienteTeste();
+        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
+        Peca peca = criarPecaTeste();
+
+        var itens = List.of(
+            new ItemOrdemServicoCommand("Troca de óleo", TipoItemOrdemServico.SERVICO, new BigDecimal("50.00"), null, null),
+            new ItemOrdemServicoCommand("Filtro de óleo", TipoItemOrdemServico.PECA, new BigDecimal("25.00"), 2, peca.getId())
+        );
+        var command = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId(), itens);
+
+        OrdemServico os = ordemServicoService.abrir(command);
+
+        assertEquals(2, os.getItens().size());
+        assertEquals(new BigDecimal("100.00"), os.getValorTotal());
+
+        Optional<Peca> pecaAtualizada = pecaRepository.findById(peca.getId());
+        assertTrue(pecaAtualizada.isPresent());
+        assertEquals(8, pecaAtualizada.get().getQuantidadeEstoque());
+    }
+
+    @Test
+    void deveAprovarOrcamentoEAtualizarStatusParaExecucao() {
+        Cliente cliente = criarClienteTeste();
+        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
+        var commandAbrir = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
+        OrdemServico os = ordemServicoService.abrir(commandAbrir);
+
+        ordemServicoService.avancarStatus(os.getId());
+        ordemServicoService.avancarStatus(os.getId());
+
+        OrdemServico osAprovada = ordemServicoService.responderOrcamento(os.getId(), true, "Cliente aprovou o orçamento");
+
+        assertEquals(StatusOrdemServico.EM_EXECUCAO, osAprovada.getStatus());
+    }
+
+    @Test
+    void deveListarOrdensAtivasOrdenadasPorPrioridadeDeStatus() {
+        Cliente cliente = criarClienteTeste();
+        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
+
+        OrdemServico osRecebida = ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
+        OrdemServico osDiagnostico = ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
+        OrdemServico osExecucao = ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
+
+        ordemServicoService.avancarStatus(osDiagnostico.getId());
+        ordemServicoService.avancarStatus(osExecucao.getId());
+        ordemServicoService.avancarStatus(osExecucao.getId());
+        ordemServicoService.avancarStatus(osExecucao.getId());
+
+        List<OrdemServico> ordens = ordemServicoService.listarTodas();
+
+        assertEquals(3, ordens.size());
+        assertEquals(osExecucao.getId(), ordens.get(0).getId());
+        assertEquals(osDiagnostico.getId(), ordens.get(1).getId());
+        assertEquals(osRecebida.getId(), ordens.get(2).getId());
+    }
+
+    @Test
     void deveLancarExcecaoQuandoAdicionarItemPecaSemPecaId() {
         Cliente cliente = criarClienteTeste();
         Veiculo veiculo = criarVeiculoTeste(cliente.getId());

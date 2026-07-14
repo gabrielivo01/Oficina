@@ -1,19 +1,14 @@
 package io.github.gabrielivo.oficina.presentation.auth;
 
+import io.github.gabrielivo.oficina.application.auth.AuthService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.core.Authentication;
-
-import io.github.gabrielivo.oficina.infrastructure.security.JwtService;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,10 +16,7 @@ import static org.mockito.Mockito.when;
 class AuthControllerTest {
 
     @Mock
-    private AuthenticationManager authenticationManager;
-
-    @Mock
-    private JwtService jwtService;
+    private AuthService authService;
 
     @InjectMocks
     private AuthController authController;
@@ -32,11 +24,8 @@ class AuthControllerTest {
     @Test
     void deveRetornarTokenQuandoLoginValido() {
         LoginRequest request = new LoginRequest("usuario.teste", "senha123");
-        Authentication authentication = mock(Authentication.class);
 
-        when(authenticationManager.authenticate(any())).thenReturn(authentication);
-        when(authentication.getName()).thenReturn("usuario.teste");
-        when(jwtService.gerarToken("usuario.teste")).thenReturn("token-jwt");
+        when(authService.autenticar("usuario.teste", "senha123")).thenReturn("token-jwt");
 
         ResponseEntity<LoginResponse> response = authController.login(request);
 
@@ -44,7 +33,6 @@ class AuthControllerTest {
         assertNotNull(response.getBody());
         assertEquals("token-jwt", response.getBody().token());
 
-        verify(authenticationManager).authenticate(any());
-        verify(jwtService).gerarToken("usuario.teste");
+        verify(authService).autenticar("usuario.teste", "senha123");
     }
 }

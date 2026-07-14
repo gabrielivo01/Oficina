@@ -89,4 +89,29 @@ class OrdemServicoTest {
 
         assertTrue(exception.getMessage().contains("Transição inválida"));
     }
+
+    @Test
+    void deveResponderOrcamentoQuandoStatusEstaAguardandoAprovacao() {
+        Cliente cliente = new Cliente("11122233344", "Gabriel", null, null);
+        Veiculo veiculo = new Veiculo(cliente, "ABC1234", "Fiat", "Uno", 2020);
+        OrdemServico os = new OrdemServico(cliente, veiculo);
+
+        os.avancarStatus();
+        os.avancarStatus();
+
+        os.aprovarOrcamento();
+
+        assertEquals(StatusOrdemServico.EM_EXECUCAO, os.getStatus());
+    }
+
+    @Test
+    void deveAtualizarStatusExternoQuandoTransicaoEhValida() {
+        Cliente cliente = new Cliente("11122233344", "Gabriel", null, null);
+        Veiculo veiculo = new Veiculo(cliente, "ABC1234", "Fiat", "Uno", 2020);
+        OrdemServico os = new OrdemServico(cliente, veiculo);
+
+        os.atualizarStatusExterno(StatusOrdemServico.EM_DIAGNOSTICO);
+
+        assertEquals(StatusOrdemServico.EM_DIAGNOSTICO, os.getStatus());
+    }
 }

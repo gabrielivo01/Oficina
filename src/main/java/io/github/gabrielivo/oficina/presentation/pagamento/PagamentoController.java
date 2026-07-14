@@ -29,16 +29,15 @@ public class PagamentoController {
         @PathVariable String ordemServicoId,
         @Valid @RequestBody PagamentoRequest request
     ) {
-        RegistrarPagamentoCommand command = pagamentoMapper.toCommand(ordemServicoId, request);
-        Pagamento pagamento = pagamentoService.registrar(command);
+        Pagamento pagamento = pagamentoService.registrar(pagamentoMapper.toCommand(ordemServicoId, request));
         return ResponseEntity.status(HttpStatus.CREATED).body(pagamentoMapper.toResponse(pagamento));
     }
 
     @GetMapping
     public ResponseEntity<List<PagamentoResponse>> listarPorOrdemServico(@PathVariable String ordemServicoId) {
-        List<PagamentoResponse> lista = pagamentoService.listarPorOrdemServico(ordemServicoId)
-            .stream().map(pagamentoMapper::toResponse).toList();
-        return ResponseEntity.ok(lista);
+        return ResponseEntity.ok(pagamentoService.listarPorOrdemServico(ordemServicoId).stream()
+            .map(pagamentoMapper::toResponse)
+            .toList());
     }
 
     @GetMapping("/{id}")

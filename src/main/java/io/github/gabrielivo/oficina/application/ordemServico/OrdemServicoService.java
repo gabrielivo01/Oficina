@@ -11,9 +11,12 @@ import io.github.gabrielivo.oficina.domain.peca.PecaRepository;
 import io.github.gabrielivo.oficina.domain.veiculo.Veiculo;
 import io.github.gabrielivo.oficina.domain.veiculo.VeiculoException;
 import io.github.gabrielivo.oficina.domain.veiculo.VeiculoRepository;
+import io.github.gabrielivo.oficina.infrastructure.notification.StatusNotificationPort;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -23,17 +26,20 @@ public class OrdemServicoService {
     private final ClienteRepository clienteRepository;
     private final VeiculoRepository veiculoRepository;
     private final PecaRepository pecaRepository;
+    private final StatusNotificationPort statusNotificationPort;
 
     public OrdemServicoService(
         OrdemServicoRepository ordemServicoRepository,
         ClienteRepository clienteRepository,
         VeiculoRepository veiculoRepository,
-        PecaRepository pecaRepository
+        PecaRepository pecaRepository,
+        @Autowired(required = false) StatusNotificationPort statusNotificationPort
     ) {
         this.ordemServicoRepository = ordemServicoRepository;
         this.clienteRepository = clienteRepository;
         this.veiculoRepository = veiculoRepository;
         this.pecaRepository = pecaRepository;
+        this.statusNotificationPort = statusNotificationPort;
     }
 
     @Transactional
@@ -45,7 +51,15 @@ public class OrdemServicoService {
             .orElseThrow(() -> new VeiculoException("Veículo não encontrado: " + command.veiculoId()));
 
         OrdemServico os = new OrdemServico(cliente, veiculo);
-        return ordemServicoRepository.save(os);
+        OrdemServico osSalva = ordemServicoRepository.save(os);
+
+        if (command.itens() != null && !command.itens().isEmpty()) {
+            for (ItemOrdemServicoCommand itemCommand : command.itens()) {
+                adicionarItemInterno(osSalva, itemCommand);
+            }
+        }
+
+        return ordemServicoRepository.save(osSalva);
     }
 
     @Transactional(readOnly = true)
@@ -56,7 +70,11 @@ public class OrdemServicoService {
 
     @Transactional(readOnly = true)
     public List<OrdemServico> listarTodas() {
-        return ordemServicoRepository.findAll();
+        return ordemServicoRepository.findAll().stream()
+            .filter(os -> os.getStatus() != StatusOrdemServico.FINALIZADA && os.getStatus() != StatusOrdemServico.ENTREGUE)
+            .sorted(Comparator.comparingInt((OrdemServico os) -> prioridadeStatus(os.getStatus()))
+                .thenComparing(OrdemServico::getCriadoEm))
+            .toList();
     }
 
     @Transactional(readOnly = true)
@@ -100,13 +118,11 @@ public class OrdemServicoService {
     public OrdemServico removerItem(String ordemServicoId, String itemId) {
         OrdemServico os = buscarPorId(ordemServicoId);
 
-        // Buscar o item antes de remover para repor o estoque se for uma peça
         ItemOrdemServico itemRemovido = os.getItens().stream()
             .filter(item -> item.getId().equals(itemId))
             .findFirst()
             .orElseThrow(() -> new OrdemServicoException("Item não encontrado na OS: " + itemId));
 
-        // Se o item é uma peça, repor o estoque
         if (itemRemovido.getTipo() == TipoItemOrdemServico.PECA && itemRemovido.getPeca() != null) {
             Peca peca = itemRemovido.getPeca();
             peca.reporEstoque(itemRemovido.getQuantidade());
@@ -121,7 +137,37 @@ public class OrdemServicoService {
     public OrdemServico avancarStatus(String id) {
         OrdemServico os = buscarPorId(id);
         os.avancarStatus();
-        return ordemServicoRepository.save(os);
+        OrdemServico osAtualizada = ordemServicoRepository.save(os);
+        if (statusNotificationPort != null) {
+            statusNotificationPort.enviarAtualizacao(osAtualizada.getId(), osAtualizada.getStatus(), "Status da OS atualizado");
+        }
+        return osAtualizada;
+    }
+
+    @Transactional
+    public OrdemServico responderOrcamento(String id, boolean aprovado, String observacao) {
+        OrdemServico os = buscarPorId(id);
+        if (aprovado) {
+            os.aprovarOrcamento();
+        } else {
+            os.recusarOrcamento();
+        }
+        OrdemServico osAtualizada = ordemServicoRepository.save(os);
+        if (statusNotificationPort != null) {
+            statusNotificationPort.enviarAtualizacao(osAtualizada.getId(), osAtualizada.getStatus(), "Orçamento respondido");
+        }
+        return osAtualizada;
+    }
+
+    @Transactional
+    public OrdemServico atualizarStatusExterno(String id, StatusOrdemServico novoStatus) {
+        OrdemServico os = buscarPorId(id);
+        os.atualizarStatusExterno(novoStatus);
+        OrdemServico osAtualizada = ordemServicoRepository.save(os);
+        if (statusNotificationPort != null) {
+            statusNotificationPort.enviarAtualizacao(osAtualizada.getId(), osAtualizada.getStatus(), "Status atualizado via integração externa");
+        }
+        return osAtualizada;
     }
 
     @Transactional
@@ -152,5 +198,38 @@ public class OrdemServicoService {
         return pecaRepository.findAll().stream()
             .filter(Peca::estoqueEstaBaixo)
             .toList();
+    }
+
+    private void adicionarItemInterno(OrdemServico os, ItemOrdemServicoCommand command) {
+        ItemOrdemServico item = switch (command.tipo()) {
+            case SERVICO -> new ItemOrdemServico(os, command.descricao(), command.valor());
+            case PECA -> {
+                if (command.pecaId() == null) {
+                    throw new OrdemServicoException("pecaId é obrigatório para itens do tipo PECA.");
+                }
+                if (command.quantidade() == null || command.quantidade() <= 0) {
+                    throw new OrdemServicoException("Quantidade deve ser maior que zero para itens do tipo PECA.");
+                }
+                Peca peca = pecaRepository.findById(command.pecaId())
+                    .orElseThrow(() -> new PecaException("Peça não encontrada: " + command.pecaId()));
+
+                peca.reduzirEstoque(command.quantidade());
+                pecaRepository.save(peca);
+
+                yield new ItemOrdemServico(os, command.descricao(), command.valor(), command.quantidade(), peca);
+            }
+        };
+
+        os.adicionarItem(item);
+    }
+
+    private int prioridadeStatus(StatusOrdemServico status) {
+        return switch (status) {
+            case EM_EXECUCAO -> 0;
+            case AGUARDANDO_APROVACAO -> 1;
+            case EM_DIAGNOSTICO -> 2;
+            case RECEBIDA -> 3;
+            default -> 4;
+        };
     }
 }

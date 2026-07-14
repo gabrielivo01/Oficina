@@ -17,20 +17,15 @@ public class ClienteService {
 
     @Transactional
     public Cliente criar(CriarClienteCommand command) {
-        if (clienteRepository.existsByCpf(command.cpf())) {
-            throw new ClienteException("CPF já cadastrado: " + command.cpf());
-        }
+        validarCpfDisponivel(command.cpf());
 
-        Endereco endereco = null;
-        if (command.endereco() != null) {
-            var e = command.endereco();
-            endereco = new Endereco(
-                e.cep(), e.logradouro(), e.numero(),
-                e.complemento(), e.bairro(), e.cidade(), e.uf()
-            );
-        }
+        Cliente cliente = new Cliente(
+            command.cpf(),
+            command.nome(),
+            command.telefone(),
+            criarEndereco(command.endereco())
+        );
 
-        Cliente cliente = new Cliente(command.cpf(), command.nome(), command.telefone(), endereco);
         return clienteRepository.save(cliente);
     }
 
@@ -48,17 +43,7 @@ public class ClienteService {
     @Transactional
     public Cliente atualizar(String id, AtualizarClienteCommand command) {
         Cliente cliente = buscarPorId(id);
-
-        Endereco endereco = null;
-        if (command.endereco() != null) {
-            var e = command.endereco();
-            endereco = new Endereco(
-                e.cep(), e.logradouro(), e.numero(),
-                e.complemento(), e.bairro(), e.cidade(), e.uf()
-            );
-        }
-
-        cliente.atualizar(command.nome(), command.telefone(), endereco);
+        cliente.atualizar(command.nome(), command.telefone(), criarEndereco(command.endereco()));
         return clienteRepository.save(cliente);
     }
 
@@ -66,5 +51,27 @@ public class ClienteService {
     public void deletar(String id) {
         Cliente cliente = buscarPorId(id);
         clienteRepository.delete(cliente);
+    }
+
+    private void validarCpfDisponivel(String cpf) {
+        if (clienteRepository.existsByCpf(cpf)) {
+            throw new ClienteException("CPF já cadastrado: " + cpf);
+        }
+    }
+
+    private Endereco criarEndereco(EnderecoCommand command) {
+        if (command == null) {
+            return null;
+        }
+
+        return new Endereco(
+            command.cep(),
+            command.logradouro(),
+            command.numero(),
+            command.complemento(),
+            command.bairro(),
+            command.cidade(),
+            command.uf()
+        );
     }
 }

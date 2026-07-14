@@ -27,24 +27,20 @@ public class ClienteController {
 
     @PostMapping
     public ResponseEntity<ClienteResponse> criar(@Valid @RequestBody ClienteRequest request) {
-        CriarClienteCommand command = clienteMapper.toCommand(request);
-        Cliente cliente = clienteService.criar(command);
+        Cliente cliente = clienteService.criar(clienteMapper.toCommand(request));
         return ResponseEntity.status(HttpStatus.CREATED).body(clienteMapper.toResponse(cliente));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ClienteResponse> buscarPorId(@PathVariable String id) {
-        Cliente cliente = clienteService.buscarPorId(id);
-        return ResponseEntity.ok(clienteMapper.toResponse(cliente));
+        return ResponseEntity.ok(clienteMapper.toResponse(clienteService.buscarPorId(id)));
     }
 
     @GetMapping
     public ResponseEntity<List<ClienteResponse>> listarTodos() {
-        List<ClienteResponse> clientes = clienteService.listarTodos()
-            .stream()
+        return ResponseEntity.ok(clienteService.listarTodos().stream()
             .map(clienteMapper::toResponse)
-            .toList();
-        return ResponseEntity.ok(clientes);
+            .toList());
     }
 
     @PutMapping("/{id}")
@@ -52,8 +48,7 @@ public class ClienteController {
         @PathVariable String id,
         @Valid @RequestBody AtualizarClienteRequest request
     ) {
-        AtualizarClienteCommand command = clienteMapper.toCommand(request);
-        Cliente cliente = clienteService.atualizar(id, command);
+        Cliente cliente = clienteService.atualizar(id, clienteMapper.toCommand(request));
         return ResponseEntity.ok(clienteMapper.toResponse(cliente));
     }
 

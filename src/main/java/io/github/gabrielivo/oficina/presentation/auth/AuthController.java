@@ -1,32 +1,26 @@
 package io.github.gabrielivo.oficina.presentation.auth;
 
+import io.github.gabrielivo.oficina.application.auth.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.*;
-import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
-
-import io.github.gabrielivo.oficina.infrastructure.security.JwtService;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
-    private final AuthenticationManager authenticationManager;
-    private final JwtService jwtService;
+    private final AuthService authService;
 
-    public AuthController(AuthenticationManager authenticationManager, JwtService jwtService) {
-        this.authenticationManager = authenticationManager;
-        this.jwtService = jwtService;
+    public AuthController(AuthService authService) {
+        this.authService = authService;
     }
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(request.login(), request.senha())
-        );
-
-        String token = jwtService.gerarToken(authentication.getName());
+        String token = authService.autenticar(request.login(), request.senha());
         return ResponseEntity.ok(new LoginResponse(token));
     }
 }

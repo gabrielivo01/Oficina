@@ -186,6 +186,20 @@ Executar em Desenvolvimento
 ./mvnw spring-boot:run
 ```
 
+Testar e-mails localmente
+```bash
+# Subir o banco e o MailHog
+docker compose up -d postgres mailhog
+
+# Habilitar envio de e-mail
+# no application.properties:
+# app.mail.enabled=true
+# app.mail.to=seu-email@dominio.com
+
+# Acompanhar mensagens em
+# http://localhost:8025
+```
+
 Acessar a Aplicação
 - **API Base**: http://localhost:8080
 - **Swagger UI**: http://localhost:8080/swagger-ui.html
@@ -226,13 +240,45 @@ Peças
 - `GET /pecas/estoque-critico` - Peças com estoque crítico
 
 Ordens de Serviço
-- `GET /ordens-servico` - Listar todas
-- `POST /ordens-servico` - Criar nova
+- `GET /ordens-servico` - Listar ordens ativas com ordenação por prioridade de status
+- `POST /ordens-servico` - Criar nova OS com cliente, veículo, serviços e peças
 - `GET /ordens-servico/{id}` - Buscar por ID
+- `GET /ordens-servico/{id}/status` - Consultar status atual
+- `POST /ordens-servico/{id}/aprovacao-orcamento` - Aprovar ou recusar orçamento
 - `PUT /ordens-servico/{id}/avancar-status` - Avançar status
 - `POST /ordens-servico/{id}/itens` - Adicionar item
 - `DELETE /ordens-servico/{id}/itens/{itemId}` - Remover item
 - `POST /ordens-servico/{id}/cancelar` - Cancelar OS
+
+Exemplo de abertura de OS
+```json
+{
+  "clienteId": "cliente-1",
+  "veiculoId": "veiculo-1",
+  "itens": [
+    {
+      "descricao": "Troca de óleo",
+      "tipo": "SERVICO",
+      "valor": 80.00
+    },
+    {
+      "descricao": "Filtro de óleo",
+      "tipo": "PECA",
+      "valor": 25.00,
+      "quantidade": 2,
+      "pecaId": "peca-1"
+    }
+  ]
+}
+```
+
+Exemplo de resposta de orçamento
+```json
+{
+  "aprovado": true,
+  "observacao": "Cliente aprovou o orçamento"
+}
+```
 
 Pagamentos
 - `GET /pagamentos` - Listar todos

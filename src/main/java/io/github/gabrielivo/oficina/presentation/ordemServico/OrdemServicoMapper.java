@@ -4,6 +4,7 @@ import java.util.List;
 
 import io.github.gabrielivo.oficina.application.ordemServico.AbrirOrdemServicoCommand;
 import io.github.gabrielivo.oficina.application.ordemServico.AdicionarItemOSCommand;
+import io.github.gabrielivo.oficina.application.ordemServico.ItemOrdemServicoCommand;
 import io.github.gabrielivo.oficina.domain.ordemServico.ItemOrdemServico;
 import io.github.gabrielivo.oficina.domain.ordemServico.OrdemServico;
 import org.springframework.stereotype.Component;
@@ -12,12 +13,25 @@ import org.springframework.stereotype.Component;
 public class OrdemServicoMapper {
 
     public AbrirOrdemServicoCommand toCommand(OrdemServicoRequest request) {
-        return new AbrirOrdemServicoCommand(request.clienteId(), request.veiculoId());
+        List<ItemOrdemServicoCommand> itens = request.itens() == null ? List.of() : request.itens().stream()
+            .map(this::toItemCommand)
+            .toList();
+        return new AbrirOrdemServicoCommand(request.clienteId(), request.veiculoId(), itens);
     }
 
     public AdicionarItemOSCommand toCommand(String osId, AdicionarItemOSRequest request) {
         return new AdicionarItemOSCommand(
             osId,
+            request.descricao(),
+            request.tipo(),
+            request.valor(),
+            request.quantidade(),
+            request.pecaId()
+        );
+    }
+
+    private ItemOrdemServicoCommand toItemCommand(ItemOrdemServicoRequest request) {
+        return new ItemOrdemServicoCommand(
             request.descricao(),
             request.tipo(),
             request.valor(),

@@ -22,12 +22,8 @@ public class VeiculoService {
 
     @Transactional
     public Veiculo criar(CriarVeiculoCommand command) {
-        Cliente cliente = clienteRepository.findById(command.clienteId())
-            .orElseThrow(() -> new ClienteException("Cliente não encontrado: " + command.clienteId()));
-
-        if (veiculoRepository.existsByPlaca(command.placa())) {
-            throw new VeiculoException("Placa já cadastrada: " + command.placa());
-        }
+        Cliente cliente = encontrarCliente(command.clienteId());
+        validarPlacaDisponivel(command.placa());
 
         Veiculo veiculo = new Veiculo(
             cliente,
@@ -67,5 +63,16 @@ public class VeiculoService {
     public void deletar(String id) {
         Veiculo veiculo = buscarPorId(id);
         veiculoRepository.delete(veiculo);
+    }
+
+    private Cliente encontrarCliente(String clienteId) {
+        return clienteRepository.findById(clienteId)
+            .orElseThrow(() -> new ClienteException("Cliente não encontrado: " + clienteId));
+    }
+
+    private void validarPlacaDisponivel(String placa) {
+        if (veiculoRepository.existsByPlaca(placa)) {
+            throw new VeiculoException("Placa já cadastrada: " + placa);
+        }
     }
 }

@@ -23,33 +23,27 @@ public class VeiculoController {
 
     @PostMapping
     public ResponseEntity<VeiculoResponse> criar(@Valid @RequestBody VeiculoRequest request) {
-        CriarVeiculoCommand command = veiculoMapper.toCommand(request);
-        Veiculo veiculo = veiculoService.criar(command);
+        Veiculo veiculo = veiculoService.criar(veiculoMapper.toCommand(request));
         return ResponseEntity.status(HttpStatus.CREATED).body(veiculoMapper.toResponse(veiculo));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<VeiculoResponse> buscarPorId(@PathVariable String id) {
-        Veiculo veiculo = veiculoService.buscarPorId(id);
-        return ResponseEntity.ok(veiculoMapper.toResponse(veiculo));
+        return ResponseEntity.ok(veiculoMapper.toResponse(veiculoService.buscarPorId(id)));
     }
 
     @GetMapping
     public ResponseEntity<List<VeiculoResponse>> listarTodos() {
-        List<VeiculoResponse> veiculos = veiculoService.listarTodos()
-            .stream()
+        return ResponseEntity.ok(veiculoService.listarTodos().stream()
             .map(veiculoMapper::toResponse)
-            .toList();
-        return ResponseEntity.ok(veiculos);
+            .toList());
     }
 
     @GetMapping("/cliente/{clienteId}")
     public ResponseEntity<List<VeiculoResponse>> listarPorCliente(@PathVariable String clienteId) {
-        List<VeiculoResponse> veiculos = veiculoService.listarPorCliente(clienteId)
-            .stream()
+        return ResponseEntity.ok(veiculoService.listarPorCliente(clienteId).stream()
             .map(veiculoMapper::toResponse)
-            .toList();
-        return ResponseEntity.ok(veiculos);
+            .toList());
     }
 
     @PutMapping("/{id}")
@@ -57,8 +51,7 @@ public class VeiculoController {
         @PathVariable String id,
         @Valid @RequestBody AtualizarVeiculoRequest request
     ) {
-        AtualizarVeiculoCommand command = veiculoMapper.toCommand(request);
-        Veiculo veiculo = veiculoService.atualizar(id, command);
+        Veiculo veiculo = veiculoService.atualizar(id, veiculoMapper.toCommand(request));
         return ResponseEntity.ok(veiculoMapper.toResponse(veiculo));
     }
 

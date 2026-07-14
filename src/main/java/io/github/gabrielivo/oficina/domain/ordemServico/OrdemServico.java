@@ -54,25 +54,31 @@ public class OrdemServico {
     }
 
     public void avancarStatus() {
-        StatusOrdemServico[] valores = StatusOrdemServico.values();
-        int proximoIndice = this.status.ordinal() + 1;
+        StatusOrdemServico proximoStatus = this.status.proximoStatus();
+        validarTransicaoPara(proximoStatus);
+        this.status = proximoStatus;
+        marcarAtualizacao();
+    }
 
-        if (proximoIndice >= valores.length) {
-            throw new OrdemServicoException(
-                "Transição inválida de " + this.status + " para nenhum estado posterior"
-            );
+    public void aprovarOrcamento() {
+        validarStatusParaRespostaOrcamento();
+        this.status = StatusOrdemServico.EM_EXECUCAO;
+        marcarAtualizacao();
+    }
+
+    public void recusarOrcamento() {
+        validarStatusParaRespostaOrcamento();
+        this.status = StatusOrdemServico.AGUARDANDO_APROVACAO;
+        marcarAtualizacao();
+    }
+
+    public void atualizarStatusExterno(StatusOrdemServico novoStatus) {
+        if (novoStatus == null) {
+            throw new OrdemServicoException("Status é obrigatório.");
         }
-
-        StatusOrdemServico proximo = valores[proximoIndice];
-
-        if (!this.status.podeTransicionarPara(proximo)) {
-            throw new OrdemServicoException(
-                "Transição inválida de " + this.status + " para " + proximo
-            );
-        }
-
-        this.status = proximo;
-        this.atualizadoEm = LocalDateTime.now();
+        validarTransicaoPara(novoStatus);
+        this.status = novoStatus;
+        marcarAtualizacao();
     }
 
     public void limparItens() {
@@ -82,12 +88,10 @@ public class OrdemServico {
     }
 
     public void adicionarItem(ItemOrdemServico item) {
-        if (this.status == StatusOrdemServico.FINALIZADA || this.status == StatusOrdemServico.ENTREGUE) {
-            throw new OrdemServicoException("Não é possível adicionar itens em uma OS finalizada ou entregue.");
-        }
+        validarAlteracaoDeItens();
         this.itens.add(item);
         recalcularTotal();
-        this.atualizadoEm = LocalDateTime.now();
+        marcarAtualizacao();
     }
 
     public void removerItem(String itemId) {
@@ -96,13 +100,35 @@ public class OrdemServico {
             throw new OrdemServicoException("Item não encontrado na OS: " + itemId);
         }
         recalcularTotal();
-        this.atualizadoEm = LocalDateTime.now();
+        marcarAtualizacao();
     }
 
     public void recalcularTotal() {
         this.valorTotal = itens.stream()
             .map(ItemOrdemServico::getValorTotal)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private void validarTransicaoPara(StatusOrdemServico proximoStatus) {
+        if (proximoStatus == null || !this.status.podeTransicionarPara(proximoStatus)) {
+            throw new OrdemServicoException("Transição inválida de " + this.status + " para " + proximoStatus);
+        }
+    }
+
+    private void validarStatusParaRespostaOrcamento() {
+        if (this.status != StatusOrdemServico.AGUARDANDO_APROVACAO) {
+            throw new OrdemServicoException("A aprovação de orçamento só é permitida quando a OS está aguardando aprovação.");
+        }
+    }
+
+    private void validarAlteracaoDeItens() {
+        if (this.status == StatusOrdemServico.FINALIZADA || this.status == StatusOrdemServico.ENTREGUE) {
+            throw new OrdemServicoException("Não é possível alterar itens em uma OS finalizada ou entregue.");
+        }
+    }
+
+    private void marcarAtualizacao() {
+        this.atualizadoEm = LocalDateTime.now();
     }
 
     // Getters

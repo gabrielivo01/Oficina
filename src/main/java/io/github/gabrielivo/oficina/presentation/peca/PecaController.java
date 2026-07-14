@@ -2,6 +2,7 @@ package io.github.gabrielivo.oficina.presentation.peca;
 
 import io.github.gabrielivo.oficina.application.ordemServico.*;
 import io.github.gabrielivo.oficina.domain.peca.Peca;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,7 +19,7 @@ public class PecaController {
     }
 
     @PostMapping
-    public ResponseEntity<Peca> criar(@RequestBody CriarPecaRequest request) {
+    public ResponseEntity<Peca> criar(@Valid @RequestBody CriarPecaRequest request) {
         var command = new CriarPecaCommand(
             request.nome(),
             request.descricao(),
@@ -41,7 +42,7 @@ public class PecaController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Peca> atualizar(@PathVariable String id, @RequestBody AtualizarPecaRequest request) {
+    public ResponseEntity<Peca> atualizar(@PathVariable String id, @Valid @RequestBody AtualizarPecaRequest request) {
         var command = new AtualizarPecaCommand(
             request.nome(),
             request.descricao(),

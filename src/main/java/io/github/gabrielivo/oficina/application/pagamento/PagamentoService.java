@@ -25,12 +25,8 @@ public class PagamentoService {
 
     @Transactional
     public Pagamento registrar(RegistrarPagamentoCommand command) {
-        OrdemServico os = ordemServicoRepository.findById(command.ordemServicoId())
-            .orElseThrow(() -> new OrdemServicoException("Ordem de Serviço não encontrada: " + command.ordemServicoId()));
-
-        if (pagamentoRepository.existsByOrdemServicoId(command.ordemServicoId())) {
-            throw new PagamentoException("Esta OS já possui um pagamento registrado.");
-        }
+        OrdemServico os = buscarOrdemServico(command.ordemServicoId());
+        validarPagamentoDuplicado(command.ordemServicoId());
 
         Pagamento pagamento = new Pagamento(os, command.valor(), command.formaPagamento());
         return pagamentoRepository.save(pagamento);
@@ -45,5 +41,16 @@ public class PagamentoService {
     @Transactional(readOnly = true)
     public List<Pagamento> listarPorOrdemServico(String ordemServicoId) {
         return pagamentoRepository.findByOrdemServicoId(ordemServicoId);
+    }
+
+    private OrdemServico buscarOrdemServico(String ordemServicoId) {
+        return ordemServicoRepository.findById(ordemServicoId)
+            .orElseThrow(() -> new OrdemServicoException("Ordem de Serviço não encontrada: " + ordemServicoId));
+    }
+
+    private void validarPagamentoDuplicado(String ordemServicoId) {
+        if (pagamentoRepository.existsByOrdemServicoId(ordemServicoId)) {
+            throw new PagamentoException("Esta OS já possui um pagamento registrado.");
+        }
     }
 }

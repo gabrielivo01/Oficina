@@ -21,25 +21,35 @@ public class UsuarioService {
 
     @Transactional
     public Usuario criar(CriarUsuarioCommand command) {
-        if (usuarioRepository.findByLogin(command.login()).isPresent()) {
-            throw new UsuarioException("Login já cadastrado: " + command.login());
-        }
+        validarLoginDisponivel(command.login());
 
-        String senhaCriptografada = passwordEncoder.encode(command.senha());
-        Usuario usuario = new Usuario(command.login(), senhaCriptografada);
+        Usuario usuario = new Usuario(command.login(), passwordEncoder.encode(command.senha()));
         return usuarioRepository.save(usuario);
     }
 
     @Transactional
     public void trocarSenha(TrocarSenhaCommand command) {
-        Usuario usuario = usuarioRepository.findByLogin(command.login())
-                .orElseThrow(() -> new UsuarioException("Usuário não encontrado."));
+        Usuario usuario = buscarUsuarioPorLogin(command.login());
+        validarSenhaAtual(command.senhaAtual(), usuario);
 
-        if (!passwordEncoder.matches(command.senhaAtual(), usuario.getSenha())) {
+        usuario.atualizarSenha(passwordEncoder.encode(command.novaSenha()));
+        usuarioRepository.save(usuario);
+    }
+
+    private void validarLoginDisponivel(String login) {
+        if (usuarioRepository.findByLogin(login).isPresent()) {
+            throw new UsuarioException("Login já cadastrado: " + login);
+        }
+    }
+
+    private Usuario buscarUsuarioPorLogin(String login) {
+        return usuarioRepository.findByLogin(login)
+            .orElseThrow(() -> new UsuarioException("Usuário não encontrado."));
+    }
+
+    private void validarSenhaAtual(String senhaAtual, Usuario usuario) {
+        if (!passwordEncoder.matches(senhaAtual, usuario.getSenha())) {
             throw new UsuarioException("Senha atual incorreta.");
         }
-
-        Usuario atualizado = new Usuario(usuario.getLogin(), passwordEncoder.encode(command.novaSenha()));
-        usuarioRepository.save(atualizado);
     }
 }

@@ -17,7 +17,13 @@ public class PecaService {
 
     @Transactional
     public Peca criar(CriarPecaCommand command) {
-        Peca peca = new Peca(command.nome(), command.descricao(), command.preco(), command.quantidadeEstoque(), command.estoqueMinimo());
+        Peca peca = new Peca(
+            command.nome(),
+            command.descricao(),
+            command.preco(),
+            command.quantidadeEstoque(),
+            command.estoqueMinimo()
+        );
         return pecaRepository.save(peca);
     }
 
@@ -35,7 +41,13 @@ public class PecaService {
     @Transactional
     public Peca atualizar(String id, AtualizarPecaCommand command) {
         Peca peca = buscarPorId(id);
-        peca.atualizar(command.nome(), command.descricao(), command.preco(), command.quantidadeEstoque(), command.estoqueMinimo());
+        peca.atualizar(
+            command.nome(),
+            command.descricao(),
+            command.preco(),
+            command.quantidadeEstoque(),
+            command.estoqueMinimo()
+        );
         return pecaRepository.save(peca);
     }
 

@@ -104,7 +104,7 @@ class MapperTests {
 
     @Test
     void deveMapearOrdemServicoRequestParaAbrirCommand() {
-        var request = new OrdemServicoRequest("cliente-1", "veiculo-1");
+        var request = new OrdemServicoRequest("cliente-1", "veiculo-1", null);
         var command = ordemServicoMapper.toCommand(request);
 
         assertEquals("cliente-1", command.clienteId());

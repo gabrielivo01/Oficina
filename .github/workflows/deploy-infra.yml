@@ -1,0 +1,94 @@
+name: Deploy Infra and App
+
+on:
+  workflow_dispatch:
+    inputs:
+      overlay:
+        description: "Target overlay"
+        required: true
+        type: choice
+        options:
+          - hml
+          - prod
+      terraform_env_dir:
+        description: "Terraform environment directory"
+        required: true
+        default: "infra/terraform/environments/dev"
+      terraform_auto_apply:
+        description: "Apply terraform changes automatically"
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.overlay }}
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      NAMESPACE: oficina
+      WAIT_FOR_ROLLOUT: "true"
+      RUN_SMOKE_TEST: "true"
+      ROLLBACK_ON_SMOKE_FAIL: "true"
+      USE_EXTERNAL_SECRETS: "true"
+      AUTH_SMOKE_ENABLED: "false"
+      DB_SMOKE_ENABLED: "false"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.30.0
+
+      - name: Run unit tests
+        run: ./mvnw -q test
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - name: Configure kubeconfig
+        run: |
+          CLUSTER_NAME="${{ secrets.EKS_CLUSTER_NAME }}"
+          AWS_REGION="${{ secrets.AWS_REGION }}"
+          aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION"
+
+      - name: Execute CI deploy flow
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          SPRING_MAIL_USERNAME: ${{ secrets.SPRING_MAIL_USERNAME }}
+          SPRING_MAIL_PASSWORD: ${{ secrets.SPRING_MAIL_PASSWORD }}
+          AUTH_SMOKE_LOGIN: ${{ secrets.AUTH_SMOKE_LOGIN }}
+          AUTH_SMOKE_PASSWORD: ${{ secrets.AUTH_SMOKE_PASSWORD }}
+          AUTH_SMOKE_LOGIN_URL: ${{ secrets.AUTH_SMOKE_LOGIN_URL }}
+          AUTH_SMOKE_TARGET_URL: ${{ secrets.AUTH_SMOKE_TARGET_URL }}
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+          TERRAFORM_AUTO_APPLY: ${{ github.event.inputs.terraform_auto_apply }}
+          OUTPUT_DIR: ${{ github.workspace }}/rendered-overlay
+        run: |
+          chmod +x scripts/*.sh
+          scripts/ci_deploy.sh "${{ github.event.inputs.overlay }}" "${{ github.event.inputs.terraform_env_dir }}"
+
+      - name: Upload rendered overlay artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployed-overlay-${{ github.event.inputs.overlay }}
+          path: ${{ github.workspace }}/rendered-overlay
