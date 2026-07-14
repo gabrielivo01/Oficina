@@ -382,6 +382,113 @@ services:
       - SPRING_PROFILES_ACTIVE=prod
 ```
 
+Parte 2 - Entregas Realizadas Hoje
+
+1. APIs criadas
+
+- Abertura de Ordem de Serviço (OS): recebimento de dados de cliente, veículo, serviços e peças, retornando identificação única da OS.
+- Consulta de status da OS: situação atual da OS, contemplando Recebida, Diagnóstico, Aguardando Aprovação, Execução, Finalizada e Entregue.
+- Aprovação de orçamento: endpoint para receber notificações externas de aprovação ou recusa de orçamento do cliente.
+- Listagem de ordens de serviço com as regras:
+- Ordenação por status: Em Execução > Aguardando Aprovação > Diagnóstico > Recebida.
+- Mais antigas primeiro.
+- Exclusão lógica da listagem para OS finalizadas e entregues.
+- Atualização de status da OS via ferramenta externa, como e-mail.
+
+2. Refatoração arquitetural
+
+- Refatoração do projeto com foco em arquitetura baseada em Clean Architecture.
+- Melhor separação de responsabilidades entre domínio, aplicação, apresentação e infraestrutura.
+
+Diagrama da arquitetura de código (Clean Architecture)
+
+```mermaid
+flowchart TB
+    subgraph Presentation[Presentation Layer]
+      Controllers[REST Controllers]
+      DTOs[DTOs e Mappers]
+    end
+
+    subgraph Application[Application Layer]
+      UseCases[Casos de Uso]
+      Ports[Portas]
+    end
+
+    subgraph Domain[Domain Layer]
+      Entities[Entidades de Dominio]
+      DomainRules[Regras de Negocio]
+    end
+
+    subgraph Infrastructure[Infrastructure Layer]
+      Persistence[Repositorios JPA e Adapters]
+      Security[JWT e Seguranca]
+      External[Integracoes Externas]
+    end
+
+    Controllers --> UseCases
+    DTOs --> UseCases
+    UseCases --> Entities
+    UseCases --> DomainRules
+    UseCases --> Ports
+    Ports --> Persistence
+    Ports --> External
+    Controllers --> Security
+    Security --> UseCases
+```
+
+3. CI/CD e automação de infraestrutura
+
+- Configuração de CI/CD com GitHub Actions.
+- Uso de scripts de automação para deploy.
+- Integração com Terraform para provisionamento de infraestrutura e pipeline de entrega.
+
+Parte 3 - Instruções de Execução e Entrega
+
+Instruções para execução local
+
+```bash
+# instalar dependências e validar projeto
+./mvnw clean test
+
+# executar API localmente
+./mvnw spring-boot:run
+```
+
+Endpoints locais:
+- API: http://localhost:8080
+- Swagger UI: http://localhost:8080/swagger-ui.html
+- OpenAPI JSON: http://localhost:8080/v3/api-docs
+
+Instruções para deploy em Kubernetes
+
+```bash
+# deploy direto no ambiente dev
+kubectl apply -k k8s/overlays/dev
+```
+
+Opção com render/deploy usando outputs do Terraform:
+
+```bash
+DB_PASSWORD="<senha_db>" scripts/deploy_k8s_overlay.sh hml infra/terraform/environments/dev
+```
+
+Instruções para provisionamento da infraestrutura com Terraform
+
+```bash
+cd infra/terraform/environments/dev
+cp terraform.tfvars.example terraform.tfvars
+terraform init
+terraform validate
+terraform plan -var-file=terraform.tfvars
+terraform apply -var-file=terraform.tfvars
+```
+
+Link para a collection completa das APIs
+
+- Swagger UI: http://localhost:8080/swagger-ui.html
+- OpenAPI (importável no Postman/Insomnia): http://localhost:8080/v3/api-docs
+- Em ambiente remoto, substitua `localhost:8080` pelo host publicado.
+
 Licença
 
 Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
