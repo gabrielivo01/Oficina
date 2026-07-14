@@ -16,6 +16,8 @@ Required environment variables:
 
 Optional environment variables:
   USE_EXTERNAL_SECRETS    true/false (default: true)
+  IMAGE_NAME              Optional image repository override applied to kustomization
+  IMAGE_TAG               Optional image tag override applied to kustomization
   JWT_SECRET              required only when USE_EXTERNAL_SECRETS=false and secret tokens are present
   DB_PASSWORD             required only when USE_EXTERNAL_SECRETS=false and secret tokens are present
   SPRING_MAIL_USERNAME
@@ -79,6 +81,8 @@ SPRING_MAIL_USERNAME="${SPRING_MAIL_USERNAME:-}"
 SPRING_MAIL_PASSWORD="${SPRING_MAIL_PASSWORD:-}"
 JWT_SECRET_VALUE="${JWT_SECRET:-}"
 DB_PASSWORD_VALUE="${DB_PASSWORD:-}"
+IMAGE_NAME="${IMAGE_NAME:-}"
+IMAGE_TAG="${IMAGE_TAG:-}"
 
 replace_token() {
   local token="$1"
@@ -109,6 +113,16 @@ for file in "$OUTPUT_DIR"/*.yaml; do
     replace_token "__DB_PASSWORD__" "$DB_PASSWORD_VALUE" "$file"
   fi
 done
+
+KUSTOMIZATION_FILE="$OUTPUT_DIR/kustomization.yaml"
+if [[ -f "$KUSTOMIZATION_FILE" ]]; then
+  if [[ -n "$IMAGE_NAME" ]]; then
+    sed -i -E "s|(^[[:space:]]*newName:[[:space:]]*).*$|\1$IMAGE_NAME|" "$KUSTOMIZATION_FILE"
+  fi
+  if [[ -n "$IMAGE_TAG" ]]; then
+    sed -i -E "s|(^[[:space:]]*newTag:[[:space:]]*).*$|\1$IMAGE_TAG|" "$KUSTOMIZATION_FILE"
+  fi
+fi
 
 echo "Rendered overlay available at: $OUTPUT_DIR"
 echo "Validate output: kubectl kustomize $OUTPUT_DIR"

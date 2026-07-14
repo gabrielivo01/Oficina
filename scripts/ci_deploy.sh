@@ -16,6 +16,8 @@ Required environment variables:
 
 Optional environment variables:
   USE_EXTERNAL_SECRETS       true/false (default: true)
+  IMAGE_NAME                 Optional image repository override for deploy
+  IMAGE_TAG                  Optional image tag override for deploy
   JWT_SECRET                 required only when USE_EXTERNAL_SECRETS=false
   SPRING_MAIL_USERNAME
   SPRING_MAIL_PASSWORD
@@ -103,6 +105,8 @@ fi
 
 echo "Starting Kubernetes deploy for overlay '$OVERLAY'"
 USE_EXTERNAL_SECRETS="$USE_EXTERNAL_SECRETS" \
+IMAGE_NAME="${IMAGE_NAME:-}" \
+IMAGE_TAG="${IMAGE_TAG:-}" \
 JWT_SECRET="${JWT_SECRET:-}" \
 DB_PASSWORD="$DB_PASSWORD" \
 SPRING_MAIL_USERNAME="${SPRING_MAIL_USERNAME:-}" \

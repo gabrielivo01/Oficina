@@ -100,9 +100,13 @@ Gates adicionados no CI Terraform:
 - `terraform plan`
 
 Workflow CI/CD adicionado:
+- `.github/workflows/ci.yml` para integração contínua:
+	- build da aplicação
+	- execução dos testes automatizados
+	- build da imagem Docker
 - `.github/workflows/deploy-infra.yml` com execução manual (`workflow_dispatch`) para `hml` e `prod`
 - usa segredos para AWS e banco (JWT vem do AWS Secrets Manager no modo padrão)
-- executa testes, planeja/aplica Terraform e faz deploy no cluster
+- executa testes, build/push da imagem Docker no GHCR, planeja/aplica Terraform e faz deploy no cluster
 - usa `environment` dinâmico (`hml` ou `prod`) para permitir aprovação obrigatória no ambiente de produção
 
 Workflow de revisão sem deploy:

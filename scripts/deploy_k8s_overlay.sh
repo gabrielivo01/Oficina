@@ -16,6 +16,8 @@ Required environment variables:
 
 Optional environment variables:
   USE_EXTERNAL_SECRETS    true/false (default: true)
+  IMAGE_NAME              Optional image repository override used by rendered overlay
+  IMAGE_TAG               Optional image tag override used by rendered overlay
   JWT_SECRET              required only when USE_EXTERNAL_SECRETS=false
   DB_PASSWORD             required only when USE_EXTERNAL_SECRETS=false
   SPRING_MAIL_USERNAME
@@ -99,6 +101,8 @@ rollback_if_enabled() {
 }
 
 USE_EXTERNAL_SECRETS="$USE_EXTERNAL_SECRETS" \
+IMAGE_NAME="${IMAGE_NAME:-}" \
+IMAGE_TAG="${IMAGE_TAG:-}" \
 JWT_SECRET="${JWT_SECRET:-}" \
 DB_PASSWORD="${DB_PASSWORD:-}" \
 SPRING_MAIL_USERNAME="${SPRING_MAIL_USERNAME:-}" \
