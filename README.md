@@ -442,6 +442,37 @@ flowchart TB
 - Uso de scripts de automação para deploy.
 - Integração com Terraform para provisionamento de infraestrutura e pipeline de entrega.
 
+Diagrama do fluxo de deploy
+
+```mermaid
+flowchart TD
+  A[Desenvolvedor faz push no repositorio] --> B[GitHub Actions]
+  B --> C[Pipeline de CI]
+  C --> D[Build da aplicacao com Maven]
+  D --> E[Execucao dos testes automatizados]
+  E --> F[Build da imagem Docker]
+
+  B --> G[Pipeline de Deploy]
+  G --> H[Build e push da imagem no GHCR]
+  H --> I[Terraform init, validate e plan]
+  I --> J{Auto apply habilitado?}
+  J -->|Sim| K[Terraform apply]
+  J -->|Nao| L[Aguardando aprovacao ou execucao manual]
+  L --> K
+
+  K --> M[Obtencao dos outputs da infraestrutura]
+  M --> N[Renderizacao do overlay Kubernetes]
+  N --> O[Kubectl apply no cluster EKS]
+  O --> P[Aguardar rollout da aplicacao]
+  P --> Q[Smoke tests e health checks]
+  Q --> R{Deploy valido?}
+  R -->|Sim| S[Deploy concluido]
+  R -->|Nao| T[Rollback automatico do deployment]
+
+  N --> U[Artifact do overlay renderizado]
+  I --> V[Artifact do plano Terraform]
+```
+
 Parte 3 - Instruções de Execução e Entrega
 
 Instruções para execução local
