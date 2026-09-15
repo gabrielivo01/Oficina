@@ -12,10 +12,13 @@ import io.github.gabrielivo.oficina.domain.veiculo.Veiculo;
 import io.github.gabrielivo.oficina.domain.veiculo.VeiculoException;
 import io.github.gabrielivo.oficina.domain.veiculo.VeiculoRepository;
 import io.github.gabrielivo.oficina.infrastructure.notification.StatusNotificationPort;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 
@@ -27,19 +30,22 @@ public class OrdemServicoService {
     private final VeiculoRepository veiculoRepository;
     private final PecaRepository pecaRepository;
     private final StatusNotificationPort statusNotificationPort;
+    private final MeterRegistry meterRegistry;
 
     public OrdemServicoService(
         OrdemServicoRepository ordemServicoRepository,
         ClienteRepository clienteRepository,
         VeiculoRepository veiculoRepository,
         PecaRepository pecaRepository,
-        @Autowired(required = false) StatusNotificationPort statusNotificationPort
+        @Autowired(required = false) StatusNotificationPort statusNotificationPort,
+        MeterRegistry meterRegistry
     ) {
         this.ordemServicoRepository = ordemServicoRepository;
         this.clienteRepository = clienteRepository;
         this.veiculoRepository = veiculoRepository;
         this.pecaRepository = pecaRepository;
         this.statusNotificationPort = statusNotificationPort;
+        this.meterRegistry = meterRegistry;
     }
 
     @Transactional
@@ -59,6 +65,7 @@ public class OrdemServicoService {
             }
         }
 
+        meterRegistry.counter("oficina.ordens_servico.abertas").increment();
         return ordemServicoRepository.save(osSalva);
     }
 
@@ -136,7 +143,10 @@ public class OrdemServicoService {
     @Transactional
     public OrdemServico avancarStatus(String id) {
         OrdemServico os = buscarPorId(id);
+        StatusOrdemServico statusAnterior = os.getStatus();
+        LocalDateTime statusDesde = os.getStatusDesde();
         os.avancarStatus();
+        registrarTempoNoStatus(statusAnterior, statusDesde);
         OrdemServico osAtualizada = ordemServicoRepository.save(os);
         if (statusNotificationPort != null) {
             statusNotificationPort.enviarAtualizacao(osAtualizada.getId(), osAtualizada.getStatus(), "Status da OS atualizado");
@@ -147,11 +157,14 @@ public class OrdemServicoService {
     @Transactional
     public OrdemServico responderOrcamento(String id, boolean aprovado, String observacao) {
         OrdemServico os = buscarPorId(id);
+        StatusOrdemServico statusAnterior = os.getStatus();
+        LocalDateTime statusDesde = os.getStatusDesde();
         if (aprovado) {
             os.aprovarOrcamento();
         } else {
             os.recusarOrcamento();
         }
+        registrarTempoNoStatus(statusAnterior, statusDesde);
         OrdemServico osAtualizada = ordemServicoRepository.save(os);
         if (statusNotificationPort != null) {
             statusNotificationPort.enviarAtualizacao(osAtualizada.getId(), osAtualizada.getStatus(), "Orçamento respondido");
@@ -162,12 +175,20 @@ public class OrdemServicoService {
     @Transactional
     public OrdemServico atualizarStatusExterno(String id, StatusOrdemServico novoStatus) {
         OrdemServico os = buscarPorId(id);
+        StatusOrdemServico statusAnterior = os.getStatus();
+        LocalDateTime statusDesde = os.getStatusDesde();
         os.atualizarStatusExterno(novoStatus);
+        registrarTempoNoStatus(statusAnterior, statusDesde);
         OrdemServico osAtualizada = ordemServicoRepository.save(os);
         if (statusNotificationPort != null) {
             statusNotificationPort.enviarAtualizacao(osAtualizada.getId(), osAtualizada.getStatus(), "Status atualizado via integração externa");
         }
         return osAtualizada;
+    }
+
+    private void registrarTempoNoStatus(StatusOrdemServico statusAnterior, LocalDateTime statusDesde) {
+        meterRegistry.timer("oficina.ordens_servico.tempo_no_status", "status", statusAnterior.name())
+            .record(Duration.between(statusDesde, LocalDateTime.now()));
     }
 
     @Transactional

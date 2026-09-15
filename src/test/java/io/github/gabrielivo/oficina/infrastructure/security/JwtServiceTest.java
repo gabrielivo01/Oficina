@@ -30,4 +30,27 @@ class JwtServiceTest {
     void deveRetornarFalseParaTokenInvalido() {
         assertFalse(jwtService.isTokenValido("token-invalido"));
     }
+
+    @Test
+    void deveRetornarTipoUsuarioPorPadraoQuandoClaimAusente() {
+        String token = jwtService.gerarToken("usuario.teste");
+
+        assertEquals(TipoPrincipal.USUARIO, jwtService.extrairTipo(token));
+    }
+
+    @Test
+    void deveExtrairTipoClienteQuandoClaimPresente() {
+        String token = io.jsonwebtoken.Jwts.builder()
+            .setSubject("11122233344")
+            .claim("tipo", "CLIENTE")
+            .setIssuedAt(new java.util.Date())
+            .setExpiration(new java.util.Date(System.currentTimeMillis() + 10000L))
+            .signWith(
+                io.jsonwebtoken.security.Keys.hmacShaKeyFor("01234567890123456789012345678901".getBytes()),
+                io.jsonwebtoken.SignatureAlgorithm.HS256)
+            .compact();
+
+        assertEquals(TipoPrincipal.CLIENTE, jwtService.extrairTipo(token));
+        assertEquals("11122233344", jwtService.extrairLogin(token));
+    }
 }

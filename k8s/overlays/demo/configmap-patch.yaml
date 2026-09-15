@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oficina-config
+data:
+  SPRING_DATASOURCE_URL: jdbc:postgresql://__DB_ENDPOINT__:__DB_PORT__/__DB_NAME__
+  SPRING_DATASOURCE_USERNAME: __DB_USERNAME__
+  APP_MAIL_ENABLED: "false"

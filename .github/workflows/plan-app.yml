@@ -1,0 +1,62 @@
+name: Plan App Deploy (render + validate k8s overlay)
+
+on:
+  workflow_dispatch:
+    inputs:
+      overlay:
+        description: "Target overlay"
+        required: true
+        type: choice
+        options:
+          - demo
+          - hml
+          - prod
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      USE_EXTERNAL_SECRETS: ${{ github.event.inputs.overlay == 'demo' && 'false' || 'true' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.30.0
+
+      - name: Run unit tests
+        run: ./mvnw -q test
+
+      - name: Render target overlay
+        env:
+          DB_ENDPOINT: ${{ secrets.DB_ENDPOINT }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          OUTPUT_DIR: ${{ github.workspace }}/rendered-overlay
+        run: |
+          chmod +x scripts/*.sh
+          scripts/render_k8s_overlay.sh "${{ github.event.inputs.overlay }}"
+
+      - name: Validate rendered kustomization
+        run: kubectl kustomize "${{ github.workspace }}/rendered-overlay" > /dev/null
+
+      - name: Upload rendered overlay artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-overlay-${{ github.event.inputs.overlay }}
+          path: ${{ github.workspace }}/rendered-overlay

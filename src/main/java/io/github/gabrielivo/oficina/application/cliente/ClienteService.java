@@ -53,6 +53,27 @@ public class ClienteService {
         clienteRepository.delete(cliente);
     }
 
+    @Transactional(readOnly = true)
+    public ClienteStatusConsulta consultarStatusPorCpf(String cpf) {
+        return clienteRepository.findByCpf(cpf)
+            .map(cliente -> new ClienteStatusConsulta(true, cliente.isAtivo()))
+            .orElse(new ClienteStatusConsulta(false, false));
+    }
+
+    @Transactional
+    public Cliente inativar(String id) {
+        Cliente cliente = buscarPorId(id);
+        cliente.inativar();
+        return clienteRepository.save(cliente);
+    }
+
+    @Transactional
+    public Cliente reativar(String id) {
+        Cliente cliente = buscarPorId(id);
+        cliente.reativar();
+        return clienteRepository.save(cliente);
+    }
+
     private void validarCpfDisponivel(String cpf) {
         if (clienteRepository.existsByCpf(cpf)) {
             throw new ClienteException("CPF já cadastrado: " + cpf);

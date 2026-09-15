@@ -186,6 +186,12 @@ Executar em Desenvolvimento
 ./mvnw spring-boot:run
 ```
 
+Configurar hooks do Git (uma vez, após clonar)
+```bash
+./scripts/setup_git_hooks.sh
+```
+Isso habilita hooks locais (`.githooks/`) que bloqueiam commits com arquivos de segredo/config local (`.env`, `*.pem`, `*.key`, etc.), validam a compilação a cada commit e rodam a suíte de testes antes de cada push.
+
 Testar e-mails localmente
 ```bash
 # Subir o banco e o MailHog
@@ -213,7 +219,11 @@ A aplicação cria automaticamente:
 API Endpoints
 
 Autenticação
-- `POST /auth/login` - Login e geração de token JWT
+- `POST /auth/login` - Login e geração de token JWT (staff/admin, login e senha)
+- `POST /auth/cpf` - Autenticação de clientes por CPF, via API Gateway + AWS Lambda
+  (repositório separado `oficina-auth-lambda`) — não é um endpoint desta
+  aplicação; o Lambda valida o CPF, consulta `GET /internal/clientes/{cpf}/status`
+  e emite um JWT aceito pelos mesmos endpoints protegidos abaixo
 
 Clientes
 - `GET /clientes` - Listar todos
@@ -221,6 +231,13 @@ Clientes
 - `GET /clientes/{id}` - Buscar por ID
 - `PUT /clientes/{id}` - Atualizar
 - `DELETE /clientes/{id}` - Remover
+- `PATCH /clientes/{id}/inativar` - Inativar cliente (bloqueia login por CPF)
+- `PATCH /clientes/{id}/reativar` - Reativar cliente
+
+Interno (uso servico-a-servico, não exposto publicamente)
+- `GET /internal/clientes/{cpf}/status` - Existência/status do cliente; protegido
+  pelo header `X-Internal-Api-Key` (`InternalApiKeyFilter`), consumido pelo Lambda
+  de autenticação por CPF
 
 Veículos
 - `GET /veiculos` - Listar todos
@@ -245,7 +262,7 @@ Ordens de Serviço
 - `GET /ordens-servico/{id}` - Buscar por ID
 - `GET /ordens-servico/{id}/status` - Consultar status atual
 - `POST /ordens-servico/{id}/aprovacao-orcamento` - Aprovar ou recusar orçamento
-- `PUT /ordens-servico/{id}/avancar-status` - Avançar status
+- `PATCH /ordens-servico/{id}/avancar-status` - Avançar status
 - `POST /ordens-servico/{id}/itens` - Adicionar item
 - `DELETE /ordens-servico/{id}/itens/{itemId}` - Remover item
 - `POST /ordens-servico/{id}/cancelar` - Cancelar OS
@@ -315,11 +332,18 @@ Segurança
 JWT Authentication
 - **Token Expiration**: 30 minutos
 - **Header**: `Authorization: Bearer {token}`
-- **Endpoints Protegidos**: Todos exceto login e documentação
+- **Endpoints Protegidos**: Todos exceto login, autenticação interna e documentação
+- **Dois tipos de token**: emitido via `/auth/login` (staff, claim `tipo` ausente
+  → tratado como `USUARIO`) ou via o Lambda de CPF (claim `tipo=CLIENTE`,
+  `sub`=CPF) — `JwtAuthFilter` resolve cada um contra `UserDetailsServiceImpl`
+  ou `ClienteUserDetailsService`, respectivamente; um cliente inativado deixa
+  de autenticar mesmo com token ainda não expirado
 
 Endpoints Públicos
 - `/` - Página inicial
 - `/auth/**` - Autenticação
+- `/internal/**` - Uso servico-a-servico, protegido por `X-Internal-Api-Key`
+  (não por JWT) quando `app.security.enabled=true`
 - `/v3/api-docs/**` - Documentação OpenAPI
 - `/swagger-ui/**` - Interface Swagger
 - `/actuator/**` - Health checks
@@ -440,29 +464,23 @@ flowchart TB
 
 - Configuração de CI/CD com GitHub Actions.
 - Uso de scripts de automação para deploy.
-- Integração com Terraform para provisionamento de infraestrutura e pipeline de entrega.
+- **Após o split em 4 repositórios** (ver
+  `documentacao/plano_implementacao.md`, seção 5), este repositório
+  (`oficina-app`) não possui mais Terraform próprio — ele só builda a imagem
+  e faz deploy dos manifests Kubernetes num cluster/banco já provisionados
+  pelos repositórios `oficina-infra-k8s` e `oficina-infra-db`.
 
-Diagrama do fluxo de deploy
+Diagrama do fluxo de deploy (`oficina-app`)
 
 ```mermaid
 flowchart TD
-  A[Desenvolvedor faz push no repositorio] --> B[GitHub Actions]
-  B --> C[Pipeline de CI]
-  C --> D[Build da aplicacao com Maven]
-  D --> E[Execucao dos testes automatizados]
-  E --> F[Build da imagem Docker]
+  A[Desenvolvedor faz push/PR] --> B[GitHub Actions]
+  B --> C[ci.yml: build Maven + testes + build Docker]
 
-  B --> G[Pipeline de Deploy]
+  B --> G[deploy-app.yml, disparo manual]
   G --> H[Build e push da imagem no GHCR]
-  H --> I[Terraform init, validate e plan]
-  I --> J{Auto apply habilitado?}
-  J -->|Sim| K[Terraform apply]
-  J -->|Nao| L[Aguardando aprovacao ou execucao manual]
-  L --> K
-
-  K --> M[Obtencao dos outputs da infraestrutura]
-  M --> N[Renderizacao do overlay Kubernetes]
-  N --> O[Kubectl apply no cluster EKS]
+  H --> N[render_k8s_overlay.sh\nusa DB_ENDPOINT/PORT/NAME/USERNAME\nde oficina-infra-db]
+  N --> O[Kubectl apply no cluster EKS\nprovisionado por oficina-infra-k8s]
   O --> P[Aguardar rollout da aplicacao]
   P --> Q[Smoke tests e health checks]
   Q --> R{Deploy valido?}
@@ -470,7 +488,17 @@ flowchart TD
   R -->|Nao| T[Rollback automatico do deployment]
 
   N --> U[Artifact do overlay renderizado]
-  I --> V[Artifact do plano Terraform]
+```
+
+Diagrama de dependência entre os 4 repositórios (deploy completo):
+
+```mermaid
+flowchart LR
+  db[oficina-infra-db\nterraform apply] -->|vpc_id, subnet_ids\nde oficina-infra-k8s| k8s
+  k8s[oficina-infra-k8s\nterraform apply] -->|db_endpoint etc.| app
+  lambda[oficina-auth-lambda\nterraform apply] -->|lambda_function_name,\nlambda_invoke_arn| k8s
+  app[oficina-app\ndeploy-app.yml] -->|app_public_url| k8s
+  app -->|app_public_url| lambda
 ```
 
 Parte 3 - Instruções de Execução e Entrega
@@ -497,22 +525,29 @@ Instruções para deploy em Kubernetes
 kubectl apply -k k8s/overlays/dev
 ```
 
-Opção com render/deploy usando outputs do Terraform:
+Opção com render/deploy usando os outputs do repositório `oficina-infra-db`
+(este repositório não possui Terraform próprio — ver "Provisionamento da
+infraestrutura" abaixo):
 
 ```bash
-DB_PASSWORD="<senha_db>" scripts/deploy_k8s_overlay.sh hml infra/terraform/environments/dev
+DB_ENDPOINT="<endpoint-rds>" DB_PORT="5432" DB_NAME="oficina_db" DB_USERNAME="postgres" \
+scripts/deploy_k8s_overlay.sh hml
 ```
 
-Instruções para provisionamento da infraestrutura com Terraform
+Provisionamento da infraestrutura (Terraform)
 
-```bash
-cd infra/terraform/environments/dev
-cp terraform.tfvars.example terraform.tfvars
-terraform init
-terraform validate
-terraform plan -var-file=terraform.tfvars
-terraform apply -var-file=terraform.tfvars
-```
+A infraestrutura deste projeto está dividida em 4 repositórios (ver
+`documentacao/plano_implementacao.md`, seção 5, e
+`documentacao/diagrama_componentes.md`); `oficina-app` não provisiona nada
+via Terraform. Ordem de aplicação:
+
+1. `oficina-infra-k8s` — cluster EKS + API Gateway (`terraform apply`).
+2. `oficina-infra-db` — RDS PostgreSQL, usando `vpc_id`/`subnet_ids` do passo 1.
+3. `oficina-auth-lambda` — function de autenticação por CPF (`terraform apply`).
+4. Deploy deste repositório (`oficina-app`) usando os outputs dos passos 1–2.
+5. Publicar o `app_public_url` (hostname do `Service` `oficina-app-lb`) de
+   volta nos repositórios `oficina-infra-k8s` e `oficina-auth-lambda` e
+   reaplicar os dois.
 
 Link para a collection completa das APIs
 

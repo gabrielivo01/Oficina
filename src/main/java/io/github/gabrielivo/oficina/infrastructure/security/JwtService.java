@@ -30,6 +30,11 @@ public class JwtService {
         return getClaims(token).getSubject();
     }
 
+    public TipoPrincipal extrairTipo(String token) {
+        String tipo = getClaims(token).get("tipo", String.class);
+        return tipo == null ? TipoPrincipal.USUARIO : TipoPrincipal.valueOf(tipo);
+    }
+
     public boolean isTokenValido(String token) {
         try {
             getClaims(token);

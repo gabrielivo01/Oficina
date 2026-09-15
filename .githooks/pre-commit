@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$here/lib/check-blocked-files.sh"
+
+mapfile -t staged_files < <(git diff --cached --name-only --diff-filter=ACM)
+check_blocked_files "${staged_files[@]}"
+check_excluded_files "${staged_files[@]}"
+
+echo "Checking compilation..."
+./mvnw -q clean compile

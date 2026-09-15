@@ -12,6 +12,7 @@ import io.github.gabrielivo.oficina.domain.peca.Peca;
 import io.github.gabrielivo.oficina.domain.peca.PecaRepository;
 import io.github.gabrielivo.oficina.domain.veiculo.Veiculo;
 import io.github.gabrielivo.oficina.domain.veiculo.VeiculoRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -24,7 +25,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DataJpaTest
-@Import({OrdemServicoService.class, ClienteService.class, VeiculoService.class, PecaService.class})
+@Import({OrdemServicoService.class, ClienteService.class, VeiculoService.class, PecaService.class, SimpleMeterRegistry.class})
 class OrdemServicoServiceTest {
 
     @Autowired

@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -21,9 +23,11 @@ public class SecurityConfig {
     private boolean securityEnabled;
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final InternalApiKeyFilter internalApiKeyFilter;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter, InternalApiKeyFilter internalApiKeyFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.internalApiKeyFilter = internalApiKeyFilter;
     }
 
     @Bean
@@ -45,6 +49,7 @@ public class SecurityConfig {
                                 "/",
                                 "/actuator/**",
                                 "/auth/**",
+                                "/internal/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -52,9 +57,27 @@ public class SecurityConfig {
                                 "/favicon.ico")
                         .permitAll()
                         .anyRequest().authenticated())
+                .addFilterBefore(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    // Login por login/senha (AuthService) autentica só contra UserDetailsServiceImpl
+    // (usuarios de staff). ClienteUserDetailsService (CPF) nunca passa por aqui —
+    // JwtAuthFilter o chama diretamente. Sem este bean explícito, o autoconfig do
+    // Spring Security encontra 2 beans de UserDetailsService, desiste de montar um
+    // DaoAuthenticationProvider sozinho, e o AuthenticationManager exposto abaixo
+    // vira seu próprio parent: authenticationManager.authenticate(...) entra em
+    // recursão infinita (StackOverflowError) em vez de autenticar.
+    @Bean
+    public AuthenticationProvider authenticationProvider(
+        UserDetailsServiceImpl userDetailsService,
+        PasswordEncoder passwordEncoder
+    ) {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder);
+        return provider;
     }
 
     @Bean

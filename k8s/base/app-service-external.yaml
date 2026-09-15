@@ -1,0 +1,19 @@
+# Expõe a aplicação publicamente via um Classic Load Balancer provisionado pelo
+# provider AWS in-tree do EKS (nenhum controller adicional necessário). É o
+# alvo do proxy HTTP configurado no módulo Terraform api-gateway do
+# repositório oficina-infra-k8s (o hostname deste LB precisa ser publicado lá
+# como app_public_url depois de aplicado).
+# Endurecimento futuro: trocar por um NLB interno + AWS Load Balancer Controller
+# e um API Gateway VPC Link, em vez de expor o serviço diretamente à internet.
+apiVersion: v1
+kind: Service
+metadata:
+  name: oficina-app-lb
+  namespace: oficina
+spec:
+  selector:
+    app: oficina-app
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: LoadBalancer

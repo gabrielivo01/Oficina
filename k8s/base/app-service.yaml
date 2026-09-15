@@ -3,10 +3,17 @@ kind: Service
 metadata:
   name: oficina-app
   namespace: oficina
+  labels:
+    app: oficina-app
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: /actuator/prometheus
+    prometheus.io/port: "80"
 spec:
   selector:
     app: oficina-app
   ports:
-    - port: 80
+    - name: http
+      port: 80
       targetPort: 8080
   type: ClusterIP

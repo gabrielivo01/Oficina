@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Import;
 import io.github.gabrielivo.oficina.domain.cliente.Cliente;
 import io.github.gabrielivo.oficina.domain.cliente.ClienteException;
 import io.github.gabrielivo.oficina.domain.cliente.ClienteRepository;
+import io.github.gabrielivo.oficina.domain.cliente.StatusCliente;
 
 import java.util.Optional;
 
@@ -172,5 +173,65 @@ class ClienteServiceTest {
         });
 
         assertEquals("Cliente não encontrado: " + idInexistente, exception.getMessage());
+    }
+
+    @Test
+    void deveCriarClienteComStatusAtivoPorPadrao() {
+        var command = new CriarClienteCommand("66666666666", "Cliente Ativo", "6666-6666", null);
+
+        Cliente cliente = clienteService.criar(command);
+
+        assertEquals(StatusCliente.ATIVO, cliente.getStatus());
+        assertTrue(cliente.isAtivo());
+    }
+
+    @Test
+    void deveConsultarStatusPorCpfQuandoClienteExisteEAtivo() {
+        var command = new CriarClienteCommand("77777777777", "Cliente Consulta", "7777-7777", null);
+        clienteService.criar(command);
+
+        var status = clienteService.consultarStatusPorCpf("77777777777");
+
+        assertTrue(status.existe());
+        assertTrue(status.ativo());
+    }
+
+    @Test
+    void deveConsultarStatusComoInexistenteQuandoCpfNaoCadastrado() {
+        var status = clienteService.consultarStatusPorCpf("00000000000");
+
+        assertFalse(status.existe());
+        assertFalse(status.ativo());
+    }
+
+    @Test
+    void deveInativarClienteERefletirNaConsultaDeStatus() {
+        var command = new CriarClienteCommand("88888888888", "Cliente Inativar", "8888-8888", null);
+        Cliente clienteCriado = clienteService.criar(command);
+
+        Cliente clienteInativado = clienteService.inativar(clienteCriado.getId());
+
+        assertEquals(StatusCliente.INATIVO, clienteInativado.getStatus());
+        var status = clienteService.consultarStatusPorCpf("88888888888");
+        assertTrue(status.existe());
+        assertFalse(status.ativo());
+    }
+
+    @Test
+    void deveReativarClienteInativo() {
+        var command = new CriarClienteCommand("99999999999", "Cliente Reativar", "9999-9999", null);
+        Cliente clienteCriado = clienteService.criar(command);
+        clienteService.inativar(clienteCriado.getId());
+
+        Cliente clienteReativado = clienteService.reativar(clienteCriado.getId());
+
+        assertEquals(StatusCliente.ATIVO, clienteReativado.getStatus());
+    }
+
+    @Test
+    void deveLancarExcecaoQuandoInativarClienteInexistente() {
+        String idInexistente = "id-inativar-inexistente";
+
+        assertThrows(ClienteException.class, () -> clienteService.inativar(idInexistente));
     }
 }

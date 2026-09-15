@@ -33,6 +33,10 @@ public class Cliente {
     @Column(name = "atualizado_em")
     private LocalDateTime atualizadoEm;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, nullable = false)
+    private StatusCliente status;
+
     public Cliente() {}
 
     public Cliente(String cpf, String nome, String telefone, Endereco endereco) {
@@ -42,6 +46,7 @@ public class Cliente {
         this.nome = nome;
         this.telefone = telefone;
         this.endereco = endereco;
+        this.status = StatusCliente.ATIVO;
     }
 
     private void validar(String cpf, String nome) {
@@ -68,6 +73,18 @@ public class Cliente {
         this.endereco = endereco;
     }
 
+    public void inativar() {
+        this.status = StatusCliente.INATIVO;
+    }
+
+    public void reativar() {
+        this.status = StatusCliente.ATIVO;
+    }
+
+    public boolean isAtivo() {
+        return status == StatusCliente.ATIVO;
+    }
+
     // Getters
     public String getId() { return id; }
     public String getCpf() { return cpf; }
@@ -76,4 +93,5 @@ public class Cliente {
     public Endereco getEndereco() { return endereco; }
     public LocalDateTime getCriadoEm() { return criadoEm; }
     public LocalDateTime getAtualizadoEm() { return atualizadoEm; }
+    public StatusCliente getStatus() { return status; }
 }

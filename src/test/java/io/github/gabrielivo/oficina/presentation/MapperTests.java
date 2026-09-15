@@ -55,6 +55,7 @@ class MapperTests {
         assertEquals("Gabriel", response.nome());
         assertNotNull(response.endereco());
         assertEquals("Centro", response.endereco().bairro());
+        assertEquals(io.github.gabrielivo.oficina.domain.cliente.StatusCliente.ATIVO, response.status());
     }
 
     @Test

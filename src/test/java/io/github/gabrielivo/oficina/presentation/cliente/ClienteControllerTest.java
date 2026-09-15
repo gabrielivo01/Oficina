@@ -38,7 +38,7 @@ class ClienteControllerTest {
         CriarClienteCommand command = new CriarClienteCommand("11122233344", "Gabriel", "61999999999", new io.github.gabrielivo.oficina.application.cliente.EnderecoCommand("12345678", "Rua Teste", "100", "Apto 1", "Centro", "Cidade", "SP"));
         Endereco endereco = new Endereco("12345678", "Rua Teste", "100", "Apto 1", "Centro", "Cidade", "SP");
         Cliente cliente = new Cliente("11122233344", "Gabriel", "61999999999", endereco);
-        ClienteResponse responseBody = new ClienteResponse(cliente.getId(), cliente.getCpf(), cliente.getNome(), cliente.getTelefone(), new EnderecoResponse(null, endereco.getCep(), endereco.getLogradouro(), endereco.getNumero(), endereco.getComplemento(), endereco.getBairro(), endereco.getCidade(), endereco.getUf()), cliente.getCriadoEm(), cliente.getAtualizadoEm());
+        ClienteResponse responseBody = new ClienteResponse(cliente.getId(), cliente.getCpf(), cliente.getNome(), cliente.getTelefone(), new EnderecoResponse(null, endereco.getCep(), endereco.getLogradouro(), endereco.getNumero(), endereco.getComplemento(), endereco.getBairro(), endereco.getCidade(), endereco.getUf()), cliente.getCriadoEm(), cliente.getAtualizadoEm(), cliente.getStatus());
 
         when(clienteMapper.toCommand(request)).thenReturn(command);
         when(clienteService.criar(command)).thenReturn(cliente);
@@ -54,7 +54,7 @@ class ClienteControllerTest {
     void deveBuscarClientePorIdERetornarOk() {
         String id = "cliente-id";
         Cliente cliente = new Cliente("11122233344", "Gabriel", "61999999999", null);
-        ClienteResponse responseBody = new ClienteResponse(id, cliente.getCpf(), cliente.getNome(), cliente.getTelefone(), null, cliente.getCriadoEm(), cliente.getAtualizadoEm());
+        ClienteResponse responseBody = new ClienteResponse(id, cliente.getCpf(), cliente.getNome(), cliente.getTelefone(), null, cliente.getCriadoEm(), cliente.getAtualizadoEm(), cliente.getStatus());
 
         when(clienteService.buscarPorId(id)).thenReturn(cliente);
         when(clienteMapper.toResponse(cliente)).thenReturn(responseBody);
@@ -68,7 +68,7 @@ class ClienteControllerTest {
     @Test
     void deveListarTodosOsClientesERetornarOk() {
         Cliente cliente = new Cliente("11122233344", "Gabriel", "61999999999", null);
-        ClienteResponse responseBody = new ClienteResponse(cliente.getId(), cliente.getCpf(), cliente.getNome(), cliente.getTelefone(), null, cliente.getCriadoEm(), cliente.getAtualizadoEm());
+        ClienteResponse responseBody = new ClienteResponse(cliente.getId(), cliente.getCpf(), cliente.getNome(), cliente.getTelefone(), null, cliente.getCriadoEm(), cliente.getAtualizadoEm(), cliente.getStatus());
 
         when(clienteService.listarTodos()).thenReturn(List.of(cliente));
         when(clienteMapper.toResponse(cliente)).thenReturn(responseBody);
@@ -88,7 +88,7 @@ class ClienteControllerTest {
         AtualizarClienteCommand command = new AtualizarClienteCommand("Gabriel Atualizado", "61999999999", new io.github.gabrielivo.oficina.application.cliente.EnderecoCommand("87654321", "Rua Atualizada", "200", "Casa", "Bairro Novo", "Cidade Nova", "RJ"));
         Endereco endereco = new Endereco("87654321", "Rua Atualizada", "200", "Casa", "Bairro Novo", "Cidade Nova", "RJ");
         Cliente cliente = new Cliente("11122233344", "Gabriel Atualizado", "61999999999", endereco);
-        ClienteResponse responseBody = new ClienteResponse(id, cliente.getCpf(), cliente.getNome(), cliente.getTelefone(), new EnderecoResponse(null, endereco.getCep(), endereco.getLogradouro(), endereco.getNumero(), endereco.getComplemento(), endereco.getBairro(), endereco.getCidade(), endereco.getUf()), cliente.getCriadoEm(), cliente.getAtualizadoEm());
+        ClienteResponse responseBody = new ClienteResponse(id, cliente.getCpf(), cliente.getNome(), cliente.getTelefone(), new EnderecoResponse(null, endereco.getCep(), endereco.getLogradouro(), endereco.getNumero(), endereco.getComplemento(), endereco.getBairro(), endereco.getCidade(), endereco.getUf()), cliente.getCriadoEm(), cliente.getAtualizadoEm(), cliente.getStatus());
 
         when(clienteMapper.toCommand(request)).thenReturn(command);
         when(clienteService.atualizar(id, command)).thenReturn(cliente);
@@ -108,5 +108,35 @@ class ClienteControllerTest {
 
         assertEquals(204, response.getStatusCode().value());
         verify(clienteService).deletar(id);
+    }
+
+    @Test
+    void deveInativarClienteERetornarOk() {
+        String id = "cliente-id";
+        Cliente cliente = new Cliente("11122233344", "Gabriel", "61999999999", null);
+        ClienteResponse responseBody = new ClienteResponse(id, cliente.getCpf(), cliente.getNome(), cliente.getTelefone(), null, cliente.getCriadoEm(), cliente.getAtualizadoEm(), cliente.getStatus());
+
+        when(clienteService.inativar(id)).thenReturn(cliente);
+        when(clienteMapper.toResponse(cliente)).thenReturn(responseBody);
+
+        ResponseEntity<ClienteResponse> response = clienteController.inativar(id);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertSame(responseBody, response.getBody());
+    }
+
+    @Test
+    void deveReativarClienteERetornarOk() {
+        String id = "cliente-id";
+        Cliente cliente = new Cliente("11122233344", "Gabriel", "61999999999", null);
+        ClienteResponse responseBody = new ClienteResponse(id, cliente.getCpf(), cliente.getNome(), cliente.getTelefone(), null, cliente.getCriadoEm(), cliente.getAtualizadoEm(), cliente.getStatus());
+
+        when(clienteService.reativar(id)).thenReturn(cliente);
+        when(clienteMapper.toResponse(cliente)).thenReturn(responseBody);
+
+        ResponseEntity<ClienteResponse> response = clienteController.reativar(id);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertSame(responseBody, response.getBody());
     }
 }

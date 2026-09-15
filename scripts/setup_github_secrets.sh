@@ -16,9 +16,13 @@ echo
 
 required=(
   AWS_REGION
-  AWS_ROLE_TO_ASSUME
+  AWS_ACCESS_KEY_ID
+  AWS_SECRET_ACCESS_KEY
   EKS_CLUSTER_NAME
-  DB_PASSWORD
+  DB_ENDPOINT
+  DB_PORT
+  DB_NAME
+  DB_USERNAME
 )
 
 for name in "${required[@]}"; do
@@ -38,6 +42,8 @@ optional=(
   AUTH_SMOKE_PASSWORD
   AUTH_SMOKE_LOGIN_URL
   AUTH_SMOKE_TARGET_URL
+  JWT_SECRET
+  DB_PASSWORD
 )
 
 for name in "${optional[@]}"; do

@@ -1,0 +1,27 @@
+<configuration>
+
+    <!-- Perfis docker/k8s: logs estruturados em JSON, incluindo o correlationId
+         propagado pelo CorrelationIdFilter via MDC (o encoder inclui todo o
+         MDC automaticamente). Facilita agregação/correlação em ferramentas
+         como Grafana Loki/CloudWatch Logs. -->
+    <springProfile name="docker,k8s">
+        <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
+        </appender>
+    </springProfile>
+
+    <!-- Demais perfis (default/dev/test): texto legível no console, com o
+         correlationId visível entre colchetes. -->
+    <springProfile name="!docker &amp; !k8s">
+        <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{correlationId}] %logger{36} - %msg%n</pattern>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT" />
+    </root>
+
+</configuration>

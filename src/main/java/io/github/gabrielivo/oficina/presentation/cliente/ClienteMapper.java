@@ -4,6 +4,7 @@ package io.github.gabrielivo.oficina.presentation.cliente;
 import org.springframework.stereotype.Component;
 
 import io.github.gabrielivo.oficina.application.cliente.AtualizarClienteCommand;
+import io.github.gabrielivo.oficina.application.cliente.ClienteStatusConsulta;
 import io.github.gabrielivo.oficina.application.cliente.CriarClienteCommand;
 import io.github.gabrielivo.oficina.application.cliente.EnderecoCommand;
 import io.github.gabrielivo.oficina.domain.cliente.Cliente;
@@ -29,8 +30,13 @@ public class ClienteMapper {
             ? toEnderecoResponse(cliente.getEndereco()) : null;
         return new ClienteResponse(
             cliente.getId(), cliente.getCpf(), cliente.getNome(),
-            cliente.getTelefone(), endRes, cliente.getCriadoEm(), cliente.getAtualizadoEm()
+            cliente.getTelefone(), endRes, cliente.getCriadoEm(), cliente.getAtualizadoEm(),
+            cliente.getStatus()
         );
+    }
+
+    public ClienteStatusResponse toStatusResponse(ClienteStatusConsulta consulta) {
+        return new ClienteStatusResponse(consulta.existe(), consulta.ativo());
     }
 
     private EnderecoCommand toEnderecoCommand(EnderecoRequest req) {

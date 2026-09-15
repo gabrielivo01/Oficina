@@ -1,5 +1,7 @@
 package io.github.gabrielivo.oficina.presentation.cliente;
 
+import io.github.gabrielivo.oficina.domain.cliente.StatusCliente;
+
 import java.time.LocalDateTime;
 
 public record ClienteResponse(
@@ -9,5 +11,6 @@ public record ClienteResponse(
     String telefone,
     EnderecoResponse endereco,
     LocalDateTime criadoEm,
-    LocalDateTime atualizadoEm
+    LocalDateTime atualizadoEm,
+    StatusCliente status
 ) {}

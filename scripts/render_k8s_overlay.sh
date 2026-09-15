@@ -5,14 +5,26 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 usage() {
   cat <<EOF
-Usage: scripts/render_k8s_overlay.sh <overlay> [terraform_env_dir]
+Usage: scripts/render_k8s_overlay.sh <overlay>
 
 Arguments:
-  overlay            Target overlay: hml or prod
-  terraform_env_dir  Terraform environment directory (default: infra/terraform/environments/dev)
+  overlay  Target overlay: demo, hml or prod
+           ('demo' is dev/hml's middle ground: real managed database like
+           hml/prod, but plain Secret tokens instead of External Secrets —
+           for a one-off real-AWS run without setting up the External
+           Secrets Operator / AWS Secrets Manager. The 'dev' overlay is
+           applied directly with `kubectl apply -k k8s/overlays/dev`, not
+           through this script.)
 
 Required environment variables:
-  none by default (when using External Secrets)
+  DB_ENDPOINT   RDS endpoint (from the oficina-infra-db repo: terraform output -raw db_endpoint)
+  DB_PORT       RDS port (terraform output -raw db_port)
+  DB_NAME       RDS database name (terraform output -raw db_name)
+  DB_USERNAME   RDS username (terraform output -raw db_username)
+
+  (oficina-app no longer owns any Terraform state of its own — since the
+  infrastructure split into oficina-infra-k8s/oficina-infra-db, these values
+  must be obtained from that repo's outputs and passed in explicitly.)
 
 Optional environment variables:
   USE_EXTERNAL_SECRETS    true/false (default: true)
@@ -26,8 +38,8 @@ Optional environment variables:
                           Default: /tmp/oficina-k8s-<overlay>-<pid>
 
 Examples:
-  JWT_SECRET=... DB_PASSWORD=... scripts/render_k8s_overlay.sh hml
-  JWT_SECRET=... DB_PASSWORD=... scripts/render_k8s_overlay.sh prod infra/terraform/environments/dev
+  DB_ENDPOINT=... DB_PORT=5432 DB_NAME=oficina_db DB_USERNAME=postgres \\
+    scripts/render_k8s_overlay.sh hml
 EOF
 }
 
@@ -37,7 +49,6 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
 fi
 
 OVERLAY="${1:-}"
-TF_ENV_REL_PATH="${2:-infra/terraform/environments/dev}"
 
 if [[ -z "$OVERLAY" ]]; then
   echo "ERROR: overlay is required." >&2
@@ -45,30 +56,17 @@ if [[ -z "$OVERLAY" ]]; then
   exit 1
 fi
 
-if [[ "$OVERLAY" != "hml" && "$OVERLAY" != "prod" ]]; then
-  echo "ERROR: overlay must be 'hml' or 'prod'." >&2
+if [[ "$OVERLAY" != "demo" && "$OVERLAY" != "hml" && "$OVERLAY" != "prod" ]]; then
+  echo "ERROR: overlay must be 'demo', 'hml' or 'prod'." >&2
   exit 1
 fi
 
-TF_ENV_DIR="$ROOT_DIR/$TF_ENV_REL_PATH"
-if [[ ! -d "$TF_ENV_DIR" ]]; then
-  echo "ERROR: terraform environment directory not found: $TF_ENV_DIR" >&2
-  exit 1
-fi
-
-for cmd in terraform; do
-  if ! command -v "$cmd" >/dev/null 2>&1; then
-    echo "ERROR: command '$cmd' is required but not installed." >&2
-    exit 1
-  fi
-done
+: "${DB_ENDPOINT:?ERROR: DB_ENDPOINT is required (see oficina-infra-db repo outputs)}"
+: "${DB_PORT:?ERROR: DB_PORT is required (see oficina-infra-db repo outputs)}"
+: "${DB_NAME:?ERROR: DB_NAME is required (see oficina-infra-db repo outputs)}"
+: "${DB_USERNAME:?ERROR: DB_USERNAME is required (see oficina-infra-db repo outputs)}"
 
 USE_EXTERNAL_SECRETS="${USE_EXTERNAL_SECRETS:-true}"
-
-DB_ENDPOINT="$(terraform -chdir="$TF_ENV_DIR" output -raw db_endpoint)"
-DB_PORT="$(terraform -chdir="$TF_ENV_DIR" output -raw db_port)"
-DB_NAME="$(terraform -chdir="$TF_ENV_DIR" output -raw db_name)"
-DB_USERNAME="$(terraform -chdir="$TF_ENV_DIR" output -raw db_username)"
 
 OUTPUT_DIR="${OUTPUT_DIR:-/tmp/oficina-k8s-$OVERLAY-$$}"
 SOURCE_OVERLAY_DIR="$ROOT_DIR/k8s/overlays/$OVERLAY"

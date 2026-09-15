@@ -21,6 +21,9 @@ class SecurityConfigTest {
     private JwtAuthFilter jwtAuthFilter;
 
     @Mock
+    private InternalApiKeyFilter internalApiKeyFilter;
+
+    @Mock
     private AuthenticationConfiguration authenticationConfiguration;
 
     @InjectMocks

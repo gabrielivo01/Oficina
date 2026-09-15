@@ -31,3 +31,18 @@ build/
 
 ### VS Code ###
 .vscode/
+CLAUDE.md
+
+### Claude Code (personal/local settings) ###
+.claude/settings.local.json
+
+### secrets / local config ###
+.env
+*.pem
+*.key
+*.p12
+*.jks
+application-local.properties
+
+### local-only scratch docs (not part of the deliverable) ###
+implementation_instruction.md

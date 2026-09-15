@@ -57,4 +57,14 @@ public class ClienteController {
         clienteService.deletar(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/{id}/inativar")
+    public ResponseEntity<ClienteResponse> inativar(@PathVariable String id) {
+        return ResponseEntity.ok(clienteMapper.toResponse(clienteService.inativar(id)));
+    }
+
+    @PatchMapping("/{id}/reativar")
+    public ResponseEntity<ClienteResponse> reativar(@PathVariable String id) {
+        return ResponseEntity.ok(clienteMapper.toResponse(clienteService.reativar(id)));
+    }
 }

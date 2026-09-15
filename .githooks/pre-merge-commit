@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$here/lib/check-blocked-files.sh"
+
+mapfile -t merged_files < <(git diff --cached --name-only --diff-filter=ACM)
+check_blocked_files "${merged_files[@]}"

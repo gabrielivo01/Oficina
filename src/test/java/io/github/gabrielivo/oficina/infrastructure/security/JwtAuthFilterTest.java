@@ -32,6 +32,9 @@ class JwtAuthFilterTest {
     @Mock
     private UserDetailsServiceImpl userDetailsService;
 
+    @Mock
+    private ClienteUserDetailsService clienteUserDetailsService;
+
     @InjectMocks
     private JwtAuthFilter jwtAuthFilter;
 
@@ -90,6 +93,7 @@ class JwtAuthFilterTest {
 
         when(jwtService.isTokenValido(token)).thenReturn(true);
         when(jwtService.extrairLogin(token)).thenReturn(login);
+        when(jwtService.extrairTipo(token)).thenReturn(TipoPrincipal.USUARIO);
         when(userDetailsService.loadUserByUsername(login)).thenReturn(userDetails);
 
         jwtAuthFilter.doFilterInternal(request, response, filterChain);
@@ -98,5 +102,56 @@ class JwtAuthFilterTest {
         assertEquals(login, SecurityContextHolder.getContext().getAuthentication().getName());
         assertTrue(SecurityContextHolder.getContext().getAuthentication().isAuthenticated());
         verify(userDetailsService).loadUserByUsername(login);
+        verifyNoInteractions(clienteUserDetailsService);
+    }
+
+    @Test
+    void deveAutenticarClienteQuandoTokenDeClienteValido() throws ServletException, IOException {
+        String token = "token-cliente-valido";
+        String cpf = "11122233344";
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer " + token);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain filterChain = new MockFilterChain();
+
+        UserDetails userDetails = User.builder()
+            .username(cpf)
+            .password("")
+            .roles("CLIENTE")
+            .build();
+
+        when(jwtService.isTokenValido(token)).thenReturn(true);
+        when(jwtService.extrairLogin(token)).thenReturn(cpf);
+        when(jwtService.extrairTipo(token)).thenReturn(TipoPrincipal.CLIENTE);
+        when(clienteUserDetailsService.loadUserByUsername(cpf)).thenReturn(userDetails);
+
+        jwtAuthFilter.doFilterInternal(request, response, filterChain);
+
+        assertNotNull(SecurityContextHolder.getContext().getAuthentication());
+        assertEquals(cpf, SecurityContextHolder.getContext().getAuthentication().getName());
+        verify(clienteUserDetailsService).loadUserByUsername(cpf);
+        verifyNoInteractions(userDetailsService);
+    }
+
+    @Test
+    void deveSeguirSemAutenticarQuandoTitularDoTokenNaoExisteMais() throws ServletException, IOException {
+        String token = "token-cliente-inativado";
+        String cpf = "99999999999";
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer " + token);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain filterChain = new MockFilterChain();
+
+        when(jwtService.isTokenValido(token)).thenReturn(true);
+        when(jwtService.extrairLogin(token)).thenReturn(cpf);
+        when(jwtService.extrairTipo(token)).thenReturn(TipoPrincipal.CLIENTE);
+        when(clienteUserDetailsService.loadUserByUsername(cpf))
+            .thenThrow(new org.springframework.security.core.userdetails.UsernameNotFoundException("não encontrado"));
+
+        jwtAuthFilter.doFilterInternal(request, response, filterChain);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 }

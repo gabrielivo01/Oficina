@@ -1,5 +1,6 @@
 package io.github.gabrielivo.oficina.infrastructure.notification;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.env.StandardEnvironment;
@@ -42,6 +43,7 @@ class StatusNotificationPortConfigurationTest {
         environment.getPropertySources().addFirst(new org.springframework.core.env.MapPropertySource("test", Map.of("app.mail.enabled", valor)));
         context.setEnvironment(environment);
         context.registerBean(JavaMailSenderImpl.class, JavaMailSenderImpl::new);
+        context.registerBean(SimpleMeterRegistry.class, SimpleMeterRegistry::new);
         context.register(EmailStatusNotificationPort.class, NoopStatusNotificationPort.class);
         context.refresh();
         return context;

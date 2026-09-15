@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -18,10 +19,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsServiceImpl userDetailsService;
+    private final ClienteUserDetailsService clienteUserDetailsService;
 
-    public JwtAuthFilter(JwtService jwtService, UserDetailsServiceImpl userDetailsService) {
+    public JwtAuthFilter(
+        JwtService jwtService,
+        UserDetailsServiceImpl userDetailsService,
+        ClienteUserDetailsService clienteUserDetailsService
+    ) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.clienteUserDetailsService = clienteUserDetailsService;
     }
 
     @Override
@@ -45,16 +52,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        String login = jwtService.extrairLogin(token);
+        String subject = jwtService.extrairLogin(token);
 
-        if (login != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(login);
+        if (subject != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            try {
+                TipoPrincipal tipo = jwtService.extrairTipo(token);
+                UserDetails userDetails = tipo == TipoPrincipal.CLIENTE
+                    ? clienteUserDetailsService.loadUserByUsername(subject)
+                    : userDetailsService.loadUserByUsername(subject);
 
-            UsernamePasswordAuthenticationToken authToken =
-                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
-            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authToken);
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            } catch (UsernameNotFoundException e) {
+                // Token com assinatura válida mas cujo titular não existe mais (ou foi
+                // inativado desde a emissão) — segue sem autenticar.
+            }
         }
 
         filterChain.doFilter(request, response);

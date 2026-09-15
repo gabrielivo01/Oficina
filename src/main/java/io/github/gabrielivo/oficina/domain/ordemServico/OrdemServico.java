@@ -41,6 +41,9 @@ public class OrdemServico {
     @Column(name = "atualizado_em")
     private LocalDateTime atualizadoEm;
 
+    @Column(name = "status_desde")
+    private LocalDateTime statusDesde;
+
     public OrdemServico() {}
 
     public OrdemServico(Cliente cliente, Veiculo veiculo) {
@@ -51,25 +54,26 @@ public class OrdemServico {
         this.valorTotal = BigDecimal.ZERO;
         this.criadoEm = LocalDateTime.now();
         this.atualizadoEm = LocalDateTime.now();
+        this.statusDesde = this.criadoEm;
     }
 
     public void avancarStatus() {
         StatusOrdemServico proximoStatus = this.status.proximoStatus();
         validarTransicaoPara(proximoStatus);
         this.status = proximoStatus;
-        marcarAtualizacao();
+        marcarMudancaDeStatus();
     }
 
     public void aprovarOrcamento() {
         validarStatusParaRespostaOrcamento();
         this.status = StatusOrdemServico.EM_EXECUCAO;
-        marcarAtualizacao();
+        marcarMudancaDeStatus();
     }
 
     public void recusarOrcamento() {
         validarStatusParaRespostaOrcamento();
         this.status = StatusOrdemServico.AGUARDANDO_APROVACAO;
-        marcarAtualizacao();
+        marcarMudancaDeStatus();
     }
 
     public void atualizarStatusExterno(StatusOrdemServico novoStatus) {
@@ -78,7 +82,7 @@ public class OrdemServico {
         }
         validarTransicaoPara(novoStatus);
         this.status = novoStatus;
-        marcarAtualizacao();
+        marcarMudancaDeStatus();
     }
 
     public void limparItens() {
@@ -131,6 +135,12 @@ public class OrdemServico {
         this.atualizadoEm = LocalDateTime.now();
     }
 
+    private void marcarMudancaDeStatus() {
+        LocalDateTime agora = LocalDateTime.now();
+        this.atualizadoEm = agora;
+        this.statusDesde = agora;
+    }
+
     // Getters
     public String getId() { return id; }
     public Cliente getCliente() { return cliente; }
@@ -140,4 +150,5 @@ public class OrdemServico {
     public List<ItemOrdemServico> getItens() { return Collections.unmodifiableList(itens); }
     public LocalDateTime getCriadoEm() { return criadoEm; }
     public LocalDateTime getAtualizadoEm() { return atualizadoEm; }
+    public LocalDateTime getStatusDesde() { return statusDesde; }
 }
