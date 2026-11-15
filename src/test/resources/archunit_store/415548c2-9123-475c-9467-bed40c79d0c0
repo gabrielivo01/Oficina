@@ -1,0 +1,5 @@
+Field <io.github.gabrielivo.oficina.infrastructure.security.InternalApiKeyFilter.expectedApiKey> is annotated with @Value in (InternalApiKeyFilter.java:0)
+Field <io.github.gabrielivo.oficina.infrastructure.security.InternalApiKeyFilter.securityEnabled> is annotated with @Value in (InternalApiKeyFilter.java:0)
+Field <io.github.gabrielivo.oficina.infrastructure.security.JwtService.expiration> is annotated with @Value in (JwtService.java:0)
+Field <io.github.gabrielivo.oficina.infrastructure.security.JwtService.secret> is annotated with @Value in (JwtService.java:0)
+Field <io.github.gabrielivo.oficina.infrastructure.security.SecurityConfig.securityEnabled> is annotated with @Value in (SecurityConfig.java:0)

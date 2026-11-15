@@ -1,0 +1,13 @@
+#
+#Sun Nov 15 16:23:04 BRT 2026
+@Transactional\ em\ classe\ s\u00F3\ em\ application=1ea4e671-0e69-44e7-b70e-422851ef3173
+@Transactional\ em\ m\u00E9todo\ s\u00F3\ em\ application=b8e7ff6c-fafd-4bf7-88ec-2860f1a29728
+application\ n\u00E3o\ depende\ de\ infrastructure,\ because\ integra\u00E7\u00F5es\ externas\ entram\ no\ application\ por\ interface\ (porta)\ declarada\ em\ application\ ou\ domain;\ o\ adapter\ fica\ em\ infrastructure\ (DIP)=87ab8a5a-9098-491e-a088-06859e168eb5
+application\ n\u00E3o\ depende\ de\ presentation=be4efd42-fb09-453d-be22-c9c0322bf3e7
+classes\ @RestController\ ficam\ em\ presentation=906439c3-274c-451e-911d-fa9396848bc1
+classes\ @Service\ ficam\ em\ application,\ because\ @Service\ marca\ casos\ de\ uso;\ componentes\ t\u00E9cnicos\ de\ infrastructure\ usam\ @Component=cb2904a5-e7a0-4335-9cc5-50fdb5c7c4d5
+domain\ n\u00E3o\ depende\ de\ application,\ presentation,\ infrastructure\ nem\ config,\ because\ o\ dom\u00EDnio\ \u00E9\ o\ n\u00FAcleo;\ jakarta.persistence\ e\ Spring\ Data\ s\u00E3o\ permitidos\ porque\ as\ entidades\ s\u00E3o\ JPA=d52797d5-0621-496a-8a86-9f19bbde2e4a
+m\u00E9todos\ de\ @RestController\ n\u00E3o\ recebem\ nem\ devolvem\ entidades\ JPA,\ because\ o\ contrato\ HTTP\ usa\ Request/Response\ (records)\ convertidos\ por\ um\ Mapper=7e8031c9-fed7-4041-a486-3bc83246b77a
+m\u00F3dulos\ de\ dom\u00EDnio\ sem\ ciclos=97458d0c-cea6-4cba-a5ed-126106d35128
+presentation\ n\u00E3o\ acessa\ repositories,\ because\ controllers\ falam\ apenas\ com\ services\ de\ application=efd631c7-b261-4dab-a50c-49664e1db47f
+sem\ inje\u00E7\u00E3o\ por\ campo\ (@Autowired,\ @Value\ ou\ @Inject\ em\ atributo),\ because\ inje\u00E7\u00E3o\ s\u00F3\ por\ construtor;\ configura\u00E7\u00E3o\ nova\ via\ @ConfigurationProperties=415548c2-9123-475c-9467-bed40c79d0c0
