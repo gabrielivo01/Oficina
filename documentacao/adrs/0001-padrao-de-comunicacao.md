@@ -1,6 +1,6 @@
 # ADR 0001: Padrão de comunicação — REST síncrono
 
-- Status: Aceita
+- Status: Parcialmente substituído por 0006
 - Data: 2026-09-14
 
 ## Contexto

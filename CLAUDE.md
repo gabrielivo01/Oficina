@@ -108,6 +108,8 @@ Admin seed: `admin`/`admin123` (`DataSeeder`). H2 console `/h2-console` (`jdbc:h
 ## Referências
 - Regras de domínio: @documentacao/regras_de_dominio.md
 - Modelo de dados: `documentacao/modelo_de_dados.md`
-- Decisões: `documentacao/adrs/` (REST síncrono, HPA, split em 4 repos), `documentacao/rfcs/` (nuvem, banco, auth por CPF)
+- Decisões: `documentacao/adrs/` (0001 REST síncrono — parcialmente substituído pelo 0006, 0002 HPA, 0003 split em 4 repos;
+  Fase 4: 0004 microsserviços, 0005 saga orquestrada, 0006 RabbitMQ, 0007 MongoDB no Billing, 0008 ambiente local/kind,
+  0009 outbox e idempotência), `documentacao/rfcs/` (nuvem, banco, auth por CPF)
 - Diagramas: `documentacao/diagrama_componentes.md`, `documentacao/diagrama_sequencia_*.md`
 - Infra/observabilidade: `documentacao/infraestrutura.md`; endpoints e exemplos: `README.md`
