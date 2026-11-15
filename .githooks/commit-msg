@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+sed -i -E '/^Co-Authored-By: .*(Claude|anthropic)/Id; /Generated with \[?Claude/Id; /^Claude-Session:/Id' "$1"
+sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$1"
