@@ -1,17 +1,12 @@
 package io.github.gabrielivo.oficina.presentation.cliente;
 
-
+import io.github.gabrielivo.oficina.application.cliente.ClienteService;
+import io.github.gabrielivo.oficina.domain.cliente.Cliente;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import io.github.gabrielivo.oficina.application.cliente.AtualizarClienteCommand;
-import io.github.gabrielivo.oficina.application.cliente.ClienteService;
-import io.github.gabrielivo.oficina.application.cliente.CriarClienteCommand;
-import io.github.gabrielivo.oficina.domain.cliente.Cliente;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/clientes")
@@ -39,15 +34,13 @@ public class ClienteController {
     @GetMapping
     public ResponseEntity<List<ClienteResponse>> listarTodos() {
         return ResponseEntity.ok(clienteService.listarTodos().stream()
-            .map(clienteMapper::toResponse)
-            .toList());
+                .map(clienteMapper::toResponse)
+                .toList());
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ClienteResponse> atualizar(
-        @PathVariable String id,
-        @Valid @RequestBody AtualizarClienteRequest request
-    ) {
+            @PathVariable String id, @Valid @RequestBody AtualizarClienteRequest request) {
         Cliente cliente = clienteService.atualizar(id, clienteMapper.toCommand(request));
         return ResponseEntity.ok(clienteMapper.toResponse(cliente));
     }

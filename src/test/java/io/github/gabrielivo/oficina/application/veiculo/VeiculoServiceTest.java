@@ -1,5 +1,7 @@
 package io.github.gabrielivo.oficina.application.veiculo;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.github.gabrielivo.oficina.application.cliente.ClienteService;
 import io.github.gabrielivo.oficina.application.cliente.CriarClienteCommand;
 import io.github.gabrielivo.oficina.application.cliente.EnderecoCommand;
@@ -9,15 +11,12 @@ import io.github.gabrielivo.oficina.domain.cliente.ClienteRepository;
 import io.github.gabrielivo.oficina.domain.veiculo.Veiculo;
 import io.github.gabrielivo.oficina.domain.veiculo.VeiculoException;
 import io.github.gabrielivo.oficina.domain.veiculo.VeiculoRepository;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
-
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 @DataJpaTest
 @Import({VeiculoService.class, ClienteService.class})
@@ -156,7 +155,8 @@ class VeiculoServiceTest {
 
         assertNotNull(veiculosCliente1);
         assertEquals(2, veiculosCliente1.size());
-        assertTrue(veiculosCliente1.stream().allMatch(v -> v.getCliente().getId().equals(cliente1.getId())));
+        assertTrue(
+                veiculosCliente1.stream().allMatch(v -> v.getCliente().getId().equals(cliente1.getId())));
         assertTrue(veiculosCliente1.stream().anyMatch(v -> v.getPlaca().equals("CLI1-001")));
         assertTrue(veiculosCliente1.stream().anyMatch(v -> v.getPlaca().equals("CLI1-002")));
     }

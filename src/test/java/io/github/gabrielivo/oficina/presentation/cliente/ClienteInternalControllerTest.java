@@ -1,5 +1,8 @@
 package io.github.gabrielivo.oficina.presentation.cliente;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
+
 import io.github.gabrielivo.oficina.application.cliente.ClienteService;
 import io.github.gabrielivo.oficina.application.cliente.ClienteStatusConsulta;
 import org.junit.jupiter.api.Test;
@@ -8,9 +11,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ClienteInternalControllerTest {

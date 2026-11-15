@@ -41,8 +41,8 @@ public class Endereco {
 
     public Endereco() {}
 
-    public Endereco(String cep, String logradouro, String numero, String complemento,
-                    String bairro, String cidade, String uf) {
+    public Endereco(
+            String cep, String logradouro, String numero, String complemento, String bairro, String cidade, String uf) {
         this.id = UUID.randomUUID().toString();
         this.cep = cep;
         this.logradouro = logradouro;
@@ -68,20 +68,49 @@ public class Endereco {
     }
 
     // Getters
-    public String getId() { return id; }
-    public String getCep() { return cep; }
-    public String getLogradouro() { return logradouro; }
-    public String getNumero() { return numero; }
-    public String getComplemento() { return complemento; }
-    public String getBairro() { return bairro; }
-    public String getCidade() { return cidade; }
-    public String getUf() { return uf; }
-    public LocalDateTime getCriadoEm() { return criadoEm; }
-    public LocalDateTime getAtualizadoEm() { return atualizadoEm; }
+    public String getId() {
+        return id;
+    }
+
+    public String getCep() {
+        return cep;
+    }
+
+    public String getLogradouro() {
+        return logradouro;
+    }
+
+    public String getNumero() {
+        return numero;
+    }
+
+    public String getComplemento() {
+        return complemento;
+    }
+
+    public String getBairro() {
+        return bairro;
+    }
+
+    public String getCidade() {
+        return cidade;
+    }
+
+    public String getUf() {
+        return uf;
+    }
+
+    public LocalDateTime getCriadoEm() {
+        return criadoEm;
+    }
+
+    public LocalDateTime getAtualizadoEm() {
+        return atualizadoEm;
+    }
 
     // Setters controlados
-    public void atualizar(String cep, String logradouro, String numero, String complemento,
-                          String bairro, String cidade, String uf) {
+    public void atualizar(
+            String cep, String logradouro, String numero, String complemento, String bairro, String cidade, String uf) {
         this.cep = cep;
         this.logradouro = logradouro;
         this.numero = numero;

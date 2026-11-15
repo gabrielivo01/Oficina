@@ -34,8 +34,7 @@ public class Peca {
     @Column(name = "atualizado_em")
     private LocalDateTime atualizadoEm;
 
-    public Peca() {
-    }
+    public Peca() {}
 
     public Peca(String nome, String descricao, BigDecimal preco, Integer quantidadeEstoque) {
         this(nome, descricao, preco, quantidadeEstoque, 0); // Estoque mínimo padrão = 0
@@ -52,8 +51,7 @@ public class Peca {
     }
 
     private void validar(String nome, BigDecimal preco, Integer quantidadeEstoque, Integer estoqueMinimo) {
-        if (nome == null || nome.isBlank())
-            throw new IllegalArgumentException("Nome da peça é obrigatório.");
+        if (nome == null || nome.isBlank()) throw new IllegalArgumentException("Nome da peça é obrigatório.");
         if (preco == null || preco.compareTo(BigDecimal.ZERO) <= 0)
             throw new IllegalArgumentException("Preço deve ser maior que zero.");
         if (quantidadeEstoque == null || quantidadeEstoque < 0)
@@ -64,8 +62,7 @@ public class Peca {
 
     @PrePersist
     protected void onCreate() {
-        if (this.id == null)
-            this.id = UUID.randomUUID().toString();
+        if (this.id == null) this.id = UUID.randomUUID().toString();
         this.criadoEm = LocalDateTime.now();
         this.atualizadoEm = LocalDateTime.now();
     }
@@ -79,8 +76,8 @@ public class Peca {
         atualizar(nome, descricao, preco, quantidadeEstoque, this.estoqueMinimo);
     }
 
-    public void atualizar(String nome, String descricao, BigDecimal preco, Integer quantidadeEstoque,
-            Integer estoqueMinimo) {
+    public void atualizar(
+            String nome, String descricao, BigDecimal preco, Integer quantidadeEstoque, Integer estoqueMinimo) {
         validar(nome, preco, quantidadeEstoque, estoqueMinimo);
         this.nome = nome;
         this.descricao = descricao;
@@ -95,8 +92,7 @@ public class Peca {
     }
 
     public void reporEstoque(int quantidade) {
-        if (quantidade <= 0)
-            throw new IllegalArgumentException("Quantidade deve ser maior que zero.");
+        if (quantidade <= 0) throw new IllegalArgumentException("Quantidade deve ser maior que zero.");
         this.quantidadeEstoque += quantidade;
     }
 
@@ -109,8 +105,7 @@ public class Peca {
     }
 
     public void validarEstoqueParaReducao(int quantidade) {
-        if (quantidade <= 0)
-            throw new IllegalArgumentException("Quantidade deve ser maior que zero.");
+        if (quantidade <= 0) throw new IllegalArgumentException("Quantidade deve ser maior que zero.");
         if (this.quantidadeEstoque < quantidade) {
             throw new IllegalStateException("Estoque insuficiente para a peça '" + nome + "'. Disponível: "
                     + quantidadeEstoque + ", solicitado: " + quantidade);

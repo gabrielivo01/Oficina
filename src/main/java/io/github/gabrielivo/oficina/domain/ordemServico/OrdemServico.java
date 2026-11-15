@@ -108,9 +108,7 @@ public class OrdemServico {
     }
 
     public void recalcularTotal() {
-        this.valorTotal = itens.stream()
-            .map(ItemOrdemServico::getValorTotal)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        this.valorTotal = itens.stream().map(ItemOrdemServico::getValorTotal).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private void validarTransicaoPara(StatusOrdemServico proximoStatus) {
@@ -121,7 +119,8 @@ public class OrdemServico {
 
     private void validarStatusParaRespostaOrcamento() {
         if (this.status != StatusOrdemServico.AGUARDANDO_APROVACAO) {
-            throw new OrdemServicoException("A aprovação de orçamento só é permitida quando a OS está aguardando aprovação.");
+            throw new OrdemServicoException(
+                    "A aprovação de orçamento só é permitida quando a OS está aguardando aprovação.");
         }
     }
 
@@ -142,13 +141,39 @@ public class OrdemServico {
     }
 
     // Getters
-    public String getId() { return id; }
-    public Cliente getCliente() { return cliente; }
-    public Veiculo getVeiculo() { return veiculo; }
-    public StatusOrdemServico getStatus() { return status; }
-    public BigDecimal getValorTotal() { return valorTotal; }
-    public List<ItemOrdemServico> getItens() { return Collections.unmodifiableList(itens); }
-    public LocalDateTime getCriadoEm() { return criadoEm; }
-    public LocalDateTime getAtualizadoEm() { return atualizadoEm; }
-    public LocalDateTime getStatusDesde() { return statusDesde; }
+    public String getId() {
+        return id;
+    }
+
+    public Cliente getCliente() {
+        return cliente;
+    }
+
+    public Veiculo getVeiculo() {
+        return veiculo;
+    }
+
+    public StatusOrdemServico getStatus() {
+        return status;
+    }
+
+    public BigDecimal getValorTotal() {
+        return valorTotal;
+    }
+
+    public List<ItemOrdemServico> getItens() {
+        return Collections.unmodifiableList(itens);
+    }
+
+    public LocalDateTime getCriadoEm() {
+        return criadoEm;
+    }
+
+    public LocalDateTime getAtualizadoEm() {
+        return atualizadoEm;
+    }
+
+    public LocalDateTime getStatusDesde() {
+        return statusDesde;
+    }
 }

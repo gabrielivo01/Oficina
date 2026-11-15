@@ -20,8 +20,7 @@ public class Usuario {
     @Column(name = "criado_em")
     private LocalDateTime criadoEm;
 
-    public Usuario() {
-    }
+    public Usuario() {}
 
     public Usuario(String login, String senha) {
         this.id = UUID.randomUUID().toString();

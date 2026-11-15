@@ -3,10 +3,9 @@ package io.github.gabrielivo.oficina.presentation.peca;
 import io.github.gabrielivo.oficina.application.ordemServico.*;
 import io.github.gabrielivo.oficina.domain.peca.Peca;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/pecas")
@@ -21,12 +20,11 @@ public class PecaController {
     @PostMapping
     public ResponseEntity<Peca> criar(@Valid @RequestBody CriarPecaRequest request) {
         var command = new CriarPecaCommand(
-            request.nome(),
-            request.descricao(),
-            request.preco(),
-            request.quantidadeEstoque(),
-            request.estoqueMinimo()
-        );
+                request.nome(),
+                request.descricao(),
+                request.preco(),
+                request.quantidadeEstoque(),
+                request.estoqueMinimo());
         Peca peca = pecaService.criar(command);
         return ResponseEntity.ok(peca);
     }
@@ -44,12 +42,11 @@ public class PecaController {
     @PutMapping("/{id}")
     public ResponseEntity<Peca> atualizar(@PathVariable String id, @Valid @RequestBody AtualizarPecaRequest request) {
         var command = new AtualizarPecaCommand(
-            request.nome(),
-            request.descricao(),
-            request.preco(),
-            request.quantidadeEstoque(),
-            request.estoqueMinimo()
-        );
+                request.nome(),
+                request.descricao(),
+                request.preco(),
+                request.quantidadeEstoque(),
+                request.estoqueMinimo());
         Peca peca = pecaService.atualizar(id, command);
         return ResponseEntity.ok(peca);
     }

@@ -1,23 +1,21 @@
 package io.github.gabrielivo.oficina.presentation.cliente;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import io.github.gabrielivo.oficina.application.cliente.AtualizarClienteCommand;
 import io.github.gabrielivo.oficina.application.cliente.ClienteService;
 import io.github.gabrielivo.oficina.application.cliente.CriarClienteCommand;
 import io.github.gabrielivo.oficina.domain.cliente.Cliente;
 import io.github.gabrielivo.oficina.domain.cliente.Endereco;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
-
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ClienteControllerTest {
@@ -33,12 +31,34 @@ class ClienteControllerTest {
 
     @Test
     void deveCriarClienteERetornarResponseCreated() {
-        EnderecoRequest enderecoRequest = new EnderecoRequest("12345678", "Rua Teste", "100", "Apto 1", "Centro", "Cidade", "SP");
+        EnderecoRequest enderecoRequest =
+                new EnderecoRequest("12345678", "Rua Teste", "100", "Apto 1", "Centro", "Cidade", "SP");
         ClienteRequest request = new ClienteRequest("11122233344", "Gabriel", "61999999999", enderecoRequest);
-        CriarClienteCommand command = new CriarClienteCommand("11122233344", "Gabriel", "61999999999", new io.github.gabrielivo.oficina.application.cliente.EnderecoCommand("12345678", "Rua Teste", "100", "Apto 1", "Centro", "Cidade", "SP"));
+        CriarClienteCommand command = new CriarClienteCommand(
+                "11122233344",
+                "Gabriel",
+                "61999999999",
+                new io.github.gabrielivo.oficina.application.cliente.EnderecoCommand(
+                        "12345678", "Rua Teste", "100", "Apto 1", "Centro", "Cidade", "SP"));
         Endereco endereco = new Endereco("12345678", "Rua Teste", "100", "Apto 1", "Centro", "Cidade", "SP");
         Cliente cliente = new Cliente("11122233344", "Gabriel", "61999999999", endereco);
-        ClienteResponse responseBody = new ClienteResponse(cliente.getId(), cliente.getCpf(), cliente.getNome(), cliente.getTelefone(), new EnderecoResponse(null, endereco.getCep(), endereco.getLogradouro(), endereco.getNumero(), endereco.getComplemento(), endereco.getBairro(), endereco.getCidade(), endereco.getUf()), cliente.getCriadoEm(), cliente.getAtualizadoEm(), cliente.getStatus());
+        ClienteResponse responseBody = new ClienteResponse(
+                cliente.getId(),
+                cliente.getCpf(),
+                cliente.getNome(),
+                cliente.getTelefone(),
+                new EnderecoResponse(
+                        null,
+                        endereco.getCep(),
+                        endereco.getLogradouro(),
+                        endereco.getNumero(),
+                        endereco.getComplemento(),
+                        endereco.getBairro(),
+                        endereco.getCidade(),
+                        endereco.getUf()),
+                cliente.getCriadoEm(),
+                cliente.getAtualizadoEm(),
+                cliente.getStatus());
 
         when(clienteMapper.toCommand(request)).thenReturn(command);
         when(clienteService.criar(command)).thenReturn(cliente);
@@ -54,7 +74,15 @@ class ClienteControllerTest {
     void deveBuscarClientePorIdERetornarOk() {
         String id = "cliente-id";
         Cliente cliente = new Cliente("11122233344", "Gabriel", "61999999999", null);
-        ClienteResponse responseBody = new ClienteResponse(id, cliente.getCpf(), cliente.getNome(), cliente.getTelefone(), null, cliente.getCriadoEm(), cliente.getAtualizadoEm(), cliente.getStatus());
+        ClienteResponse responseBody = new ClienteResponse(
+                id,
+                cliente.getCpf(),
+                cliente.getNome(),
+                cliente.getTelefone(),
+                null,
+                cliente.getCriadoEm(),
+                cliente.getAtualizadoEm(),
+                cliente.getStatus());
 
         when(clienteService.buscarPorId(id)).thenReturn(cliente);
         when(clienteMapper.toResponse(cliente)).thenReturn(responseBody);
@@ -68,7 +96,15 @@ class ClienteControllerTest {
     @Test
     void deveListarTodosOsClientesERetornarOk() {
         Cliente cliente = new Cliente("11122233344", "Gabriel", "61999999999", null);
-        ClienteResponse responseBody = new ClienteResponse(cliente.getId(), cliente.getCpf(), cliente.getNome(), cliente.getTelefone(), null, cliente.getCriadoEm(), cliente.getAtualizadoEm(), cliente.getStatus());
+        ClienteResponse responseBody = new ClienteResponse(
+                cliente.getId(),
+                cliente.getCpf(),
+                cliente.getNome(),
+                cliente.getTelefone(),
+                null,
+                cliente.getCriadoEm(),
+                cliente.getAtualizadoEm(),
+                cliente.getStatus());
 
         when(clienteService.listarTodos()).thenReturn(List.of(cliente));
         when(clienteMapper.toResponse(cliente)).thenReturn(responseBody);
@@ -83,12 +119,35 @@ class ClienteControllerTest {
     @Test
     void deveAtualizarClienteERetornarOk() {
         String id = "cliente-id";
-        EnderecoRequest enderecoRequest = new EnderecoRequest("87654321", "Rua Atualizada", "200", "Casa", "Bairro Novo", "Cidade Nova", "RJ");
-        AtualizarClienteRequest request = new AtualizarClienteRequest("Gabriel Atualizado", "61999999999", enderecoRequest);
-        AtualizarClienteCommand command = new AtualizarClienteCommand("Gabriel Atualizado", "61999999999", new io.github.gabrielivo.oficina.application.cliente.EnderecoCommand("87654321", "Rua Atualizada", "200", "Casa", "Bairro Novo", "Cidade Nova", "RJ"));
-        Endereco endereco = new Endereco("87654321", "Rua Atualizada", "200", "Casa", "Bairro Novo", "Cidade Nova", "RJ");
+        EnderecoRequest enderecoRequest =
+                new EnderecoRequest("87654321", "Rua Atualizada", "200", "Casa", "Bairro Novo", "Cidade Nova", "RJ");
+        AtualizarClienteRequest request =
+                new AtualizarClienteRequest("Gabriel Atualizado", "61999999999", enderecoRequest);
+        AtualizarClienteCommand command = new AtualizarClienteCommand(
+                "Gabriel Atualizado",
+                "61999999999",
+                new io.github.gabrielivo.oficina.application.cliente.EnderecoCommand(
+                        "87654321", "Rua Atualizada", "200", "Casa", "Bairro Novo", "Cidade Nova", "RJ"));
+        Endereco endereco =
+                new Endereco("87654321", "Rua Atualizada", "200", "Casa", "Bairro Novo", "Cidade Nova", "RJ");
         Cliente cliente = new Cliente("11122233344", "Gabriel Atualizado", "61999999999", endereco);
-        ClienteResponse responseBody = new ClienteResponse(id, cliente.getCpf(), cliente.getNome(), cliente.getTelefone(), new EnderecoResponse(null, endereco.getCep(), endereco.getLogradouro(), endereco.getNumero(), endereco.getComplemento(), endereco.getBairro(), endereco.getCidade(), endereco.getUf()), cliente.getCriadoEm(), cliente.getAtualizadoEm(), cliente.getStatus());
+        ClienteResponse responseBody = new ClienteResponse(
+                id,
+                cliente.getCpf(),
+                cliente.getNome(),
+                cliente.getTelefone(),
+                new EnderecoResponse(
+                        null,
+                        endereco.getCep(),
+                        endereco.getLogradouro(),
+                        endereco.getNumero(),
+                        endereco.getComplemento(),
+                        endereco.getBairro(),
+                        endereco.getCidade(),
+                        endereco.getUf()),
+                cliente.getCriadoEm(),
+                cliente.getAtualizadoEm(),
+                cliente.getStatus());
 
         when(clienteMapper.toCommand(request)).thenReturn(command);
         when(clienteService.atualizar(id, command)).thenReturn(cliente);
@@ -114,7 +173,15 @@ class ClienteControllerTest {
     void deveInativarClienteERetornarOk() {
         String id = "cliente-id";
         Cliente cliente = new Cliente("11122233344", "Gabriel", "61999999999", null);
-        ClienteResponse responseBody = new ClienteResponse(id, cliente.getCpf(), cliente.getNome(), cliente.getTelefone(), null, cliente.getCriadoEm(), cliente.getAtualizadoEm(), cliente.getStatus());
+        ClienteResponse responseBody = new ClienteResponse(
+                id,
+                cliente.getCpf(),
+                cliente.getNome(),
+                cliente.getTelefone(),
+                null,
+                cliente.getCriadoEm(),
+                cliente.getAtualizadoEm(),
+                cliente.getStatus());
 
         when(clienteService.inativar(id)).thenReturn(cliente);
         when(clienteMapper.toResponse(cliente)).thenReturn(responseBody);
@@ -129,7 +196,15 @@ class ClienteControllerTest {
     void deveReativarClienteERetornarOk() {
         String id = "cliente-id";
         Cliente cliente = new Cliente("11122233344", "Gabriel", "61999999999", null);
-        ClienteResponse responseBody = new ClienteResponse(id, cliente.getCpf(), cliente.getNome(), cliente.getTelefone(), null, cliente.getCriadoEm(), cliente.getAtualizadoEm(), cliente.getStatus());
+        ClienteResponse responseBody = new ClienteResponse(
+                id,
+                cliente.getCpf(),
+                cliente.getNome(),
+                cliente.getTelefone(),
+                null,
+                cliente.getCriadoEm(),
+                cliente.getAtualizadoEm(),
+                cliente.getStatus());
 
         when(clienteService.reativar(id)).thenReturn(cliente);
         when(clienteMapper.toResponse(cliente)).thenReturn(responseBody);

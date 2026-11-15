@@ -1,10 +1,10 @@
 package io.github.gabrielivo.oficina.infrastructure.security;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class JwtServiceTest {
 
@@ -41,14 +41,14 @@ class JwtServiceTest {
     @Test
     void deveExtrairTipoClienteQuandoClaimPresente() {
         String token = io.jsonwebtoken.Jwts.builder()
-            .setSubject("11122233344")
-            .claim("tipo", "CLIENTE")
-            .setIssuedAt(new java.util.Date())
-            .setExpiration(new java.util.Date(System.currentTimeMillis() + 10000L))
-            .signWith(
-                io.jsonwebtoken.security.Keys.hmacShaKeyFor("01234567890123456789012345678901".getBytes()),
-                io.jsonwebtoken.SignatureAlgorithm.HS256)
-            .compact();
+                .setSubject("11122233344")
+                .claim("tipo", "CLIENTE")
+                .setIssuedAt(new java.util.Date())
+                .setExpiration(new java.util.Date(System.currentTimeMillis() + 10000L))
+                .signWith(
+                        io.jsonwebtoken.security.Keys.hmacShaKeyFor("01234567890123456789012345678901".getBytes()),
+                        io.jsonwebtoken.SignatureAlgorithm.HS256)
+                .compact();
 
         assertEquals(TipoPrincipal.CLIENTE, jwtService.extrairTipo(token));
         assertEquals("11122233344", jwtService.extrairLogin(token));

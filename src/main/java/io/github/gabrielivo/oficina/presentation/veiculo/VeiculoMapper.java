@@ -9,33 +9,23 @@ public class VeiculoMapper {
 
     public CriarVeiculoCommand toCommand(VeiculoRequest request) {
         return new CriarVeiculoCommand(
-            request.clienteId(),
-            request.placa(),
-            request.marca(),
-            request.modelo(),
-            request.ano()
-        );
+                request.clienteId(), request.placa(), request.marca(), request.modelo(), request.ano());
     }
 
     public AtualizarVeiculoCommand toCommand(AtualizarVeiculoRequest request) {
-        return new AtualizarVeiculoCommand(
-            request.marca(),
-            request.modelo(),
-            request.ano()
-        );
+        return new AtualizarVeiculoCommand(request.marca(), request.modelo(), request.ano());
     }
 
     public VeiculoResponse toResponse(Veiculo veiculo) {
         return new VeiculoResponse(
-            veiculo.getId(),
-            veiculo.getCliente().getId(),
-            veiculo.getCliente().getNome(),
-            veiculo.getPlaca(),
-            veiculo.getMarca(),
-            veiculo.getModelo(),
-            veiculo.getAno(),
-            veiculo.getCriadoEm(),
-            veiculo.getAtualizadoEm()
-        );
+                veiculo.getId(),
+                veiculo.getCliente().getId(),
+                veiculo.getCliente().getNome(),
+                veiculo.getPlaca(),
+                veiculo.getMarca(),
+                veiculo.getModelo(),
+                veiculo.getAno(),
+                veiculo.getCriadoEm(),
+                veiculo.getAtualizadoEm());
     }
 }

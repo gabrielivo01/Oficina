@@ -1,18 +1,16 @@
 package io.github.gabrielivo.oficina.application.cliente;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
-import org.springframework.context.annotation.Import;
+import static org.junit.jupiter.api.Assertions.*;
 
 import io.github.gabrielivo.oficina.domain.cliente.Cliente;
 import io.github.gabrielivo.oficina.domain.cliente.ClienteException;
 import io.github.gabrielivo.oficina.domain.cliente.ClienteRepository;
 import io.github.gabrielivo.oficina.domain.cliente.StatusCliente;
-
 import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
 @DataJpaTest
 @Import(ClienteService.class)
@@ -26,20 +24,10 @@ class ClienteServiceTest {
 
     @Test
     void deveCriarClienteQuandoDadosSaoValidos() {
-        var enderecoCommand = new EnderecoCommand(
-                "12345678",
-                "Rua das Flores",
-                "123",
-                "Apto 101",
-                "Centro",
-                "São Paulo",
-                "SP");
+        var enderecoCommand =
+                new EnderecoCommand("12345678", "Rua das Flores", "123", "Apto 101", "Centro", "São Paulo", "SP");
 
-        var command = new CriarClienteCommand(
-                "12345678901",
-                "Gabriel Ivo",
-                "(11) 99999-9999",
-                enderecoCommand);
+        var command = new CriarClienteCommand("12345678901", "Gabriel Ivo", "(11) 99999-9999", enderecoCommand);
 
         Cliente cliente = clienteService.criar(command);
 
@@ -53,20 +41,10 @@ class ClienteServiceTest {
 
     @Test
     void deveBuscarClientePorIdQuandoClienteExiste() {
-        var enderecoCommand = new EnderecoCommand(
-                "87654321",
-                "Avenida Brasil",
-                "456",
-                null,
-                "Jardim",
-                "Rio de Janeiro",
-                "RJ");
+        var enderecoCommand =
+                new EnderecoCommand("87654321", "Avenida Brasil", "456", null, "Jardim", "Rio de Janeiro", "RJ");
 
-        var command = new CriarClienteCommand(
-                "98765432100",
-                "Maria Silva",
-                "(21) 88888-8888",
-                enderecoCommand);
+        var command = new CriarClienteCommand("98765432100", "Maria Silva", "(21) 88888-8888", enderecoCommand);
 
         Cliente clienteCriado = clienteService.criar(command);
 
@@ -114,12 +92,14 @@ class ClienteServiceTest {
     @Test
     void deveAtualizarClienteQuandoDadosSaoValidos() {
         // Criar cliente
-        var enderecoOriginal = new EnderecoCommand("33333333", "Rua Original", "3", null, "Bairro Original", "Cidade Original", "OO");
+        var enderecoOriginal =
+                new EnderecoCommand("33333333", "Rua Original", "3", null, "Bairro Original", "Cidade Original", "OO");
         var commandCriar = new CriarClienteCommand("33333333333", "Nome Original", "3333-3333", enderecoOriginal);
         Cliente clienteCriado = clienteService.criar(commandCriar);
 
         // Atualizar cliente
-        var enderecoNovo = new EnderecoCommand("44444444", "Rua Nova", "4", "Apt 4", "Bairro Novo", "Cidade Nova", "NN");
+        var enderecoNovo =
+                new EnderecoCommand("44444444", "Rua Nova", "4", "Apt 4", "Bairro Novo", "Cidade Nova", "NN");
         var commandAtualizar = new AtualizarClienteCommand("Nome Atualizado", "4444-4444", enderecoNovo);
 
         Cliente clienteAtualizado = clienteService.atualizar(clienteCriado.getId(), commandAtualizar);
@@ -148,7 +128,8 @@ class ClienteServiceTest {
     @Test
     void deveDeletarClienteQuandoClienteExiste() {
         // Criar cliente
-        var endereco = new EnderecoCommand("55555555", "Rua Deletar", "5", null, "Bairro Deletar", "Cidade Deletar", "DD");
+        var endereco =
+                new EnderecoCommand("55555555", "Rua Deletar", "5", null, "Bairro Deletar", "Cidade Deletar", "DD");
         var command = new CriarClienteCommand("55555555555", "Cliente Para Deletar", "5555-5555", endereco);
         Cliente clienteCriado = clienteService.criar(command);
 

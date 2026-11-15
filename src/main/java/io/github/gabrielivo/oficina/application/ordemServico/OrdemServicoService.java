@@ -1,9 +1,8 @@
 package io.github.gabrielivo.oficina.application.ordemServico;
 
-
 import io.github.gabrielivo.oficina.domain.cliente.Cliente;
-import io.github.gabrielivo.oficina.domain.cliente.ClienteRepository;
 import io.github.gabrielivo.oficina.domain.cliente.ClienteException;
+import io.github.gabrielivo.oficina.domain.cliente.ClienteRepository;
 import io.github.gabrielivo.oficina.domain.ordemServico.*;
 import io.github.gabrielivo.oficina.domain.peca.Peca;
 import io.github.gabrielivo.oficina.domain.peca.PecaException;
@@ -13,14 +12,13 @@ import io.github.gabrielivo.oficina.domain.veiculo.VeiculoException;
 import io.github.gabrielivo.oficina.domain.veiculo.VeiculoRepository;
 import io.github.gabrielivo.oficina.infrastructure.notification.StatusNotificationPort;
 import io.micrometer.core.instrument.MeterRegistry;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class OrdemServicoService {
@@ -33,13 +31,12 @@ public class OrdemServicoService {
     private final MeterRegistry meterRegistry;
 
     public OrdemServicoService(
-        OrdemServicoRepository ordemServicoRepository,
-        ClienteRepository clienteRepository,
-        VeiculoRepository veiculoRepository,
-        PecaRepository pecaRepository,
-        @Autowired(required = false) StatusNotificationPort statusNotificationPort,
-        MeterRegistry meterRegistry
-    ) {
+            OrdemServicoRepository ordemServicoRepository,
+            ClienteRepository clienteRepository,
+            VeiculoRepository veiculoRepository,
+            PecaRepository pecaRepository,
+            @Autowired(required = false) StatusNotificationPort statusNotificationPort,
+            MeterRegistry meterRegistry) {
         this.ordemServicoRepository = ordemServicoRepository;
         this.clienteRepository = clienteRepository;
         this.veiculoRepository = veiculoRepository;
@@ -50,11 +47,13 @@ public class OrdemServicoService {
 
     @Transactional
     public OrdemServico abrir(AbrirOrdemServicoCommand command) {
-        Cliente cliente = clienteRepository.findById(command.clienteId())
-            .orElseThrow(() -> new ClienteException("Cliente não encontrado: " + command.clienteId()));
+        Cliente cliente = clienteRepository
+                .findById(command.clienteId())
+                .orElseThrow(() -> new ClienteException("Cliente não encontrado: " + command.clienteId()));
 
-        Veiculo veiculo = veiculoRepository.findById(command.veiculoId())
-            .orElseThrow(() -> new VeiculoException("Veículo não encontrado: " + command.veiculoId()));
+        Veiculo veiculo = veiculoRepository
+                .findById(command.veiculoId())
+                .orElseThrow(() -> new VeiculoException("Veículo não encontrado: " + command.veiculoId()));
 
         OrdemServico os = new OrdemServico(cliente, veiculo);
         OrdemServico osSalva = ordemServicoRepository.save(os);
@@ -71,17 +70,19 @@ public class OrdemServicoService {
 
     @Transactional(readOnly = true)
     public OrdemServico buscarPorId(String id) {
-        return ordemServicoRepository.findById(id)
-            .orElseThrow(() -> new OrdemServicoException("Ordem de Serviço não encontrada: " + id));
+        return ordemServicoRepository
+                .findById(id)
+                .orElseThrow(() -> new OrdemServicoException("Ordem de Serviço não encontrada: " + id));
     }
 
     @Transactional(readOnly = true)
     public List<OrdemServico> listarTodas() {
         return ordemServicoRepository.findAll().stream()
-            .filter(os -> os.getStatus() != StatusOrdemServico.FINALIZADA && os.getStatus() != StatusOrdemServico.ENTREGUE)
-            .sorted(Comparator.comparingInt((OrdemServico os) -> prioridadeStatus(os.getStatus()))
-                .thenComparing(OrdemServico::getCriadoEm))
-            .toList();
+                .filter(os -> os.getStatus() != StatusOrdemServico.FINALIZADA
+                        && os.getStatus() != StatusOrdemServico.ENTREGUE)
+                .sorted(Comparator.comparingInt((OrdemServico os) -> prioridadeStatus(os.getStatus()))
+                        .thenComparing(OrdemServico::getCriadoEm))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -107,8 +108,9 @@ public class OrdemServicoService {
                 if (command.quantidade() == null || command.quantidade() <= 0) {
                     throw new OrdemServicoException("Quantidade deve ser maior que zero para itens do tipo PECA.");
                 }
-                Peca peca = pecaRepository.findById(command.pecaId())
-                    .orElseThrow(() -> new PecaException("Peça não encontrada: " + command.pecaId()));
+                Peca peca = pecaRepository
+                        .findById(command.pecaId())
+                        .orElseThrow(() -> new PecaException("Peça não encontrada: " + command.pecaId()));
 
                 peca.reduzirEstoque(command.quantidade());
                 pecaRepository.save(peca);
@@ -126,9 +128,9 @@ public class OrdemServicoService {
         OrdemServico os = buscarPorId(ordemServicoId);
 
         ItemOrdemServico itemRemovido = os.getItens().stream()
-            .filter(item -> item.getId().equals(itemId))
-            .findFirst()
-            .orElseThrow(() -> new OrdemServicoException("Item não encontrado na OS: " + itemId));
+                .filter(item -> item.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> new OrdemServicoException("Item não encontrado na OS: " + itemId));
 
         if (itemRemovido.getTipo() == TipoItemOrdemServico.PECA && itemRemovido.getPeca() != null) {
             Peca peca = itemRemovido.getPeca();
@@ -149,7 +151,8 @@ public class OrdemServicoService {
         registrarTempoNoStatus(statusAnterior, statusDesde);
         OrdemServico osAtualizada = ordemServicoRepository.save(os);
         if (statusNotificationPort != null) {
-            statusNotificationPort.enviarAtualizacao(osAtualizada.getId(), osAtualizada.getStatus(), "Status da OS atualizado");
+            statusNotificationPort.enviarAtualizacao(
+                    osAtualizada.getId(), osAtualizada.getStatus(), "Status da OS atualizado");
         }
         return osAtualizada;
     }
@@ -167,7 +170,8 @@ public class OrdemServicoService {
         registrarTempoNoStatus(statusAnterior, statusDesde);
         OrdemServico osAtualizada = ordemServicoRepository.save(os);
         if (statusNotificationPort != null) {
-            statusNotificationPort.enviarAtualizacao(osAtualizada.getId(), osAtualizada.getStatus(), "Orçamento respondido");
+            statusNotificationPort.enviarAtualizacao(
+                    osAtualizada.getId(), osAtualizada.getStatus(), "Orçamento respondido");
         }
         return osAtualizada;
     }
@@ -181,14 +185,16 @@ public class OrdemServicoService {
         registrarTempoNoStatus(statusAnterior, statusDesde);
         OrdemServico osAtualizada = ordemServicoRepository.save(os);
         if (statusNotificationPort != null) {
-            statusNotificationPort.enviarAtualizacao(osAtualizada.getId(), osAtualizada.getStatus(), "Status atualizado via integração externa");
+            statusNotificationPort.enviarAtualizacao(
+                    osAtualizada.getId(), osAtualizada.getStatus(), "Status atualizado via integração externa");
         }
         return osAtualizada;
     }
 
     private void registrarTempoNoStatus(StatusOrdemServico statusAnterior, LocalDateTime statusDesde) {
-        meterRegistry.timer("oficina.ordens_servico.tempo_no_status", "status", statusAnterior.name())
-            .record(Duration.between(statusDesde, LocalDateTime.now()));
+        meterRegistry
+                .timer("oficina.ordens_servico.tempo_no_status", "status", statusAnterior.name())
+                .record(Duration.between(statusDesde, LocalDateTime.now()));
     }
 
     @Transactional
@@ -216,9 +222,7 @@ public class OrdemServicoService {
 
     @Transactional(readOnly = true)
     public List<Peca> verificarAlertasEstoque() {
-        return pecaRepository.findAll().stream()
-            .filter(Peca::estoqueEstaBaixo)
-            .toList();
+        return pecaRepository.findAll().stream().filter(Peca::estoqueEstaBaixo).toList();
     }
 
     private void adicionarItemInterno(OrdemServico os, ItemOrdemServicoCommand command) {
@@ -231,8 +235,9 @@ public class OrdemServicoService {
                 if (command.quantidade() == null || command.quantidade() <= 0) {
                     throw new OrdemServicoException("Quantidade deve ser maior que zero para itens do tipo PECA.");
                 }
-                Peca peca = pecaRepository.findById(command.pecaId())
-                    .orElseThrow(() -> new PecaException("Peça não encontrada: " + command.pecaId()));
+                Peca peca = pecaRepository
+                        .findById(command.pecaId())
+                        .orElseThrow(() -> new PecaException("Peça não encontrada: " + command.pecaId()));
 
                 peca.reduzirEstoque(command.quantidade());
                 pecaRepository.save(peca);

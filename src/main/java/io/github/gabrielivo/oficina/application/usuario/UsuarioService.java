@@ -1,12 +1,11 @@
 package io.github.gabrielivo.oficina.application.usuario;
 
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import io.github.gabrielivo.oficina.domain.usuario.Usuario;
 import io.github.gabrielivo.oficina.domain.usuario.UsuarioException;
 import io.github.gabrielivo.oficina.domain.usuario.UsuarioRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UsuarioService {
@@ -43,8 +42,7 @@ public class UsuarioService {
     }
 
     private Usuario buscarUsuarioPorLogin(String login) {
-        return usuarioRepository.findByLogin(login)
-            .orElseThrow(() -> new UsuarioException("Usuário não encontrado."));
+        return usuarioRepository.findByLogin(login).orElseThrow(() -> new UsuarioException("Usuário não encontrado."));
     }
 
     private void validarSenhaAtual(String senhaAtual, Usuario usuario) {

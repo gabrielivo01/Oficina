@@ -1,10 +1,9 @@
 package io.github.gabrielivo.oficina.domain.peca;
 
+import io.github.gabrielivo.oficina.domain.ordemServico.OrdemServico;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.util.UUID;
-
-import io.github.gabrielivo.oficina.domain.ordemServico.OrdemServico;
 
 @Entity
 @Table(name = "item_peca")
@@ -42,7 +41,8 @@ public class ItemPeca {
     private void validar(OrdemServico ordemServico, Peca peca, Integer quantidade) {
         if (ordemServico == null) throw new IllegalArgumentException("Ordem de serviço é obrigatória.");
         if (peca == null) throw new IllegalArgumentException("Peça é obrigatória.");
-        if (quantidade == null || quantidade <= 0) throw new IllegalArgumentException("Quantidade deve ser maior que zero.");
+        if (quantidade == null || quantidade <= 0)
+            throw new IllegalArgumentException("Quantidade deve ser maior que zero.");
     }
 
     @PrePersist
@@ -51,9 +51,23 @@ public class ItemPeca {
     }
 
     // Getters
-    public String getId() { return id; }
-    public OrdemServico getOrdemServico() { return ordemServico; }
-    public Peca getPeca() { return peca; }
-    public Integer getQuantidade() { return quantidade; }
-    public BigDecimal getValor() { return valor; }
+    public String getId() {
+        return id;
+    }
+
+    public OrdemServico getOrdemServico() {
+        return ordemServico;
+    }
+
+    public Peca getPeca() {
+        return peca;
+    }
+
+    public Integer getQuantidade() {
+        return quantidade;
+    }
+
+    public BigDecimal getValor() {
+        return valor;
+    }
 }

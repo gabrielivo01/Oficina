@@ -1,15 +1,14 @@
 package io.github.gabrielivo.oficina.infrastructure.notification;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
-
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class StatusNotificationPortConfigurationTest {
 
@@ -40,7 +39,10 @@ class StatusNotificationPortConfigurationTest {
     private AnnotationConfigApplicationContext criarContextoComPropriedade(String valor) {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
         StandardEnvironment environment = new StandardEnvironment();
-        environment.getPropertySources().addFirst(new org.springframework.core.env.MapPropertySource("test", Map.of("app.mail.enabled", valor)));
+        environment
+                .getPropertySources()
+                .addFirst(
+                        new org.springframework.core.env.MapPropertySource("test", Map.of("app.mail.enabled", valor)));
         context.setEnvironment(environment);
         context.registerBean(JavaMailSenderImpl.class, JavaMailSenderImpl::new);
         context.registerBean(SimpleMeterRegistry.class, SimpleMeterRegistry::new);

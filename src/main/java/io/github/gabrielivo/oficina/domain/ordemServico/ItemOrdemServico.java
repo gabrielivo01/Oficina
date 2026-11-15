@@ -1,16 +1,15 @@
 package io.github.gabrielivo.oficina.domain.ordemServico;
 
+import io.github.gabrielivo.oficina.domain.peca.Peca;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.util.UUID;
-
-import io.github.gabrielivo.oficina.domain.peca.Peca;
 
 @Entity
 @Table(name = "item_ordem_servico")
 public class ItemOrdemServico {
 
-     @Id
+    @Id
     private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -47,7 +46,8 @@ public class ItemOrdemServico {
     }
 
     // Construtor para PECA
-    public ItemOrdemServico(OrdemServico ordemServico, String descricao, BigDecimal valor, Integer quantidade, Peca peca) {
+    public ItemOrdemServico(
+            OrdemServico ordemServico, String descricao, BigDecimal valor, Integer quantidade, Peca peca) {
         this.id = UUID.randomUUID().toString();
         this.ordemServico = ordemServico;
         this.descricao = descricao;
@@ -62,11 +62,31 @@ public class ItemOrdemServico {
     }
 
     // Getters
-    public String getId() { return id; }
-    public OrdemServico getOrdemServico() { return ordemServico; }
-    public String getDescricao() { return descricao; }
-    public TipoItemOrdemServico getTipo() { return tipo; }
-    public BigDecimal getValor() { return valor; }
-    public Integer getQuantidade() { return quantidade; }
-    public Peca getPeca() { return peca; }
+    public String getId() {
+        return id;
+    }
+
+    public OrdemServico getOrdemServico() {
+        return ordemServico;
+    }
+
+    public String getDescricao() {
+        return descricao;
+    }
+
+    public TipoItemOrdemServico getTipo() {
+        return tipo;
+    }
+
+    public BigDecimal getValor() {
+        return valor;
+    }
+
+    public Integer getQuantidade() {
+        return quantidade;
+    }
+
+    public Peca getPeca() {
+        return peca;
+    }
 }

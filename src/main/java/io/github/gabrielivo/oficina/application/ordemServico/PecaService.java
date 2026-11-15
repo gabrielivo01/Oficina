@@ -1,10 +1,9 @@
 package io.github.gabrielivo.oficina.application.ordemServico;
 
 import io.github.gabrielivo.oficina.domain.peca.*;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class PecaService {
@@ -18,19 +17,17 @@ public class PecaService {
     @Transactional
     public Peca criar(CriarPecaCommand command) {
         Peca peca = new Peca(
-            command.nome(),
-            command.descricao(),
-            command.preco(),
-            command.quantidadeEstoque(),
-            command.estoqueMinimo()
-        );
+                command.nome(),
+                command.descricao(),
+                command.preco(),
+                command.quantidadeEstoque(),
+                command.estoqueMinimo());
         return pecaRepository.save(peca);
     }
 
     @Transactional(readOnly = true)
     public Peca buscarPorId(String id) {
-        return pecaRepository.findById(id)
-            .orElseThrow(() -> new PecaException("Peça não encontrada: " + id));
+        return pecaRepository.findById(id).orElseThrow(() -> new PecaException("Peça não encontrada: " + id));
     }
 
     @Transactional(readOnly = true)
@@ -42,12 +39,11 @@ public class PecaService {
     public Peca atualizar(String id, AtualizarPecaCommand command) {
         Peca peca = buscarPorId(id);
         peca.atualizar(
-            command.nome(),
-            command.descricao(),
-            command.preco(),
-            command.quantidadeEstoque(),
-            command.estoqueMinimo()
-        );
+                command.nome(),
+                command.descricao(),
+                command.preco(),
+                command.quantidadeEstoque(),
+                command.estoqueMinimo());
         return pecaRepository.save(peca);
     }
 
@@ -66,15 +62,13 @@ public class PecaService {
 
     @Transactional(readOnly = true)
     public List<Peca> listarPecasComEstoqueBaixo() {
-        return pecaRepository.findAll().stream()
-            .filter(Peca::estoqueEstaBaixo)
-            .toList();
+        return pecaRepository.findAll().stream().filter(Peca::estoqueEstaBaixo).toList();
     }
 
     @Transactional(readOnly = true)
     public List<Peca> listarPecasComEstoqueCritico() {
         return pecaRepository.findAll().stream()
-            .filter(Peca::estoqueEstaCritico)
-            .toList();
+                .filter(Peca::estoqueEstaCritico)
+                .toList();
     }
 }

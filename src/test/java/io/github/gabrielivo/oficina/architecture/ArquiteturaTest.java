@@ -157,11 +157,11 @@ class ArquiteturaTest {
      * ordemServico → cliente, veiculo, peca; pagamento → ordemServico. Qualquer ciclo é proibido.
      */
     @ArchTest
-    static final ArchRule modulosDeDominioSemCiclos = freeze(slices()
-            .matching("io.github.gabrielivo.oficina.domain.(*)..")
-            .should()
-            .beFreeOfCycles()
-            .as("módulos de domínio sem ciclos"));
+    static final ArchRule modulosDeDominioSemCiclos =
+            freeze(slices().matching("io.github.gabrielivo.oficina.domain.(*)..")
+                    .should()
+                    .beFreeOfCycles()
+                    .as("módulos de domínio sem ciclos"));
 
     private static ArchCondition<JavaMethod> naoUsarEntidadesNaAssinatura() {
         return new ArchCondition<>("não usar entidades JPA na assinatura") {

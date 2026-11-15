@@ -1,5 +1,9 @@
 package io.github.gabrielivo.oficina.application.pagamento;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
 import io.github.gabrielivo.oficina.domain.cliente.Cliente;
 import io.github.gabrielivo.oficina.domain.ordemServico.OrdemServico;
 import io.github.gabrielivo.oficina.domain.ordemServico.OrdemServicoException;
@@ -9,6 +13,9 @@ import io.github.gabrielivo.oficina.domain.pagamento.Pagamento;
 import io.github.gabrielivo.oficina.domain.pagamento.PagamentoException;
 import io.github.gabrielivo.oficina.domain.pagamento.PagamentoRepository;
 import io.github.gabrielivo.oficina.domain.veiculo.Veiculo;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,14 +23,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PagamentoServiceTest {
@@ -50,12 +49,9 @@ class PagamentoServiceTest {
     void deveRegistrarPagamentoQuandoDadosSaoValidos() {
         var command = new RegistrarPagamentoCommand(ordemServico.getId(), new BigDecimal("150.00"), FormaPagamento.PIX);
 
-        when(ordemServicoRepository.findById(ordemServico.getId()))
-            .thenReturn(Optional.of(ordemServico));
-        when(pagamentoRepository.existsByOrdemServicoId(ordemServico.getId()))
-            .thenReturn(false);
-        when(pagamentoRepository.save(any(Pagamento.class)))
-            .thenAnswer(invocation -> invocation.getArgument(0));
+        when(ordemServicoRepository.findById(ordemServico.getId())).thenReturn(Optional.of(ordemServico));
+        when(pagamentoRepository.existsByOrdemServicoId(ordemServico.getId())).thenReturn(false);
+        when(pagamentoRepository.save(any(Pagamento.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Pagamento pagamento = pagamentoService.registrar(command);
 
@@ -76,7 +72,8 @@ class PagamentoServiceTest {
 
         when(ordemServicoRepository.findById(osId)).thenReturn(Optional.empty());
 
-        OrdemServicoException exception = assertThrows(OrdemServicoException.class, () -> pagamentoService.registrar(command));
+        OrdemServicoException exception =
+                assertThrows(OrdemServicoException.class, () -> pagamentoService.registrar(command));
         assertEquals("Ordem de Serviço não encontrada: " + osId, exception.getMessage());
 
         verify(pagamentoRepository, never()).save(any());
@@ -84,14 +81,14 @@ class PagamentoServiceTest {
 
     @Test
     void deveLancarExcecaoQuandoPagamentoJaRegistradoParaMesmaOS() {
-        var command = new RegistrarPagamentoCommand(ordemServico.getId(), new BigDecimal("200.00"), FormaPagamento.CARTAO);
+        var command =
+                new RegistrarPagamentoCommand(ordemServico.getId(), new BigDecimal("200.00"), FormaPagamento.CARTAO);
 
-        when(ordemServicoRepository.findById(ordemServico.getId()))
-            .thenReturn(Optional.of(ordemServico));
-        when(pagamentoRepository.existsByOrdemServicoId(ordemServico.getId()))
-            .thenReturn(true);
+        when(ordemServicoRepository.findById(ordemServico.getId())).thenReturn(Optional.of(ordemServico));
+        when(pagamentoRepository.existsByOrdemServicoId(ordemServico.getId())).thenReturn(true);
 
-        PagamentoException exception = assertThrows(PagamentoException.class, () -> pagamentoService.registrar(command));
+        PagamentoException exception =
+                assertThrows(PagamentoException.class, () -> pagamentoService.registrar(command));
         assertEquals("Esta OS já possui um pagamento registrado.", exception.getMessage());
 
         verify(pagamentoRepository, never()).save(any());
@@ -112,7 +109,8 @@ class PagamentoServiceTest {
         String idInexistente = "pagamento-inexistente";
         when(pagamentoRepository.findById(idInexistente)).thenReturn(Optional.empty());
 
-        PagamentoException exception = assertThrows(PagamentoException.class, () -> pagamentoService.buscarPorId(idInexistente));
+        PagamentoException exception =
+                assertThrows(PagamentoException.class, () -> pagamentoService.buscarPorId(idInexistente));
         assertEquals("Pagamento não encontrado: " + idInexistente, exception.getMessage());
     }
 
@@ -122,7 +120,7 @@ class PagamentoServiceTest {
         Pagamento pagamento2 = new Pagamento(ordemServico, new BigDecimal("50.00"), FormaPagamento.DINHEIRO);
 
         when(pagamentoRepository.findByOrdemServicoId(ordemServico.getId()))
-            .thenReturn(List.of(pagamento1, pagamento2));
+                .thenReturn(List.of(pagamento1, pagamento2));
 
         List<Pagamento> pagamentos = pagamentoService.listarPorOrdemServico(ordemServico.getId());
 

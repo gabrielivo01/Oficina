@@ -1,13 +1,12 @@
 package io.github.gabrielivo.oficina.application.veiculo;
 
 import io.github.gabrielivo.oficina.domain.cliente.Cliente;
-import io.github.gabrielivo.oficina.domain.cliente.ClienteRepository;
 import io.github.gabrielivo.oficina.domain.cliente.ClienteException;
+import io.github.gabrielivo.oficina.domain.cliente.ClienteRepository;
 import io.github.gabrielivo.oficina.domain.veiculo.*;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class VeiculoService {
@@ -25,21 +24,14 @@ public class VeiculoService {
         Cliente cliente = encontrarCliente(command.clienteId());
         validarPlacaDisponivel(command.placa());
 
-        Veiculo veiculo = new Veiculo(
-            cliente,
-            command.placa(),
-            command.marca(),
-            command.modelo(),
-            command.ano()
-        );
+        Veiculo veiculo = new Veiculo(cliente, command.placa(), command.marca(), command.modelo(), command.ano());
 
         return veiculoRepository.save(veiculo);
     }
 
     @Transactional(readOnly = true)
     public Veiculo buscarPorId(String id) {
-        return veiculoRepository.findById(id)
-            .orElseThrow(() -> new VeiculoException("Veículo não encontrado: " + id));
+        return veiculoRepository.findById(id).orElseThrow(() -> new VeiculoException("Veículo não encontrado: " + id));
     }
 
     @Transactional(readOnly = true)
@@ -66,8 +58,9 @@ public class VeiculoService {
     }
 
     private Cliente encontrarCliente(String clienteId) {
-        return clienteRepository.findById(clienteId)
-            .orElseThrow(() -> new ClienteException("Cliente não encontrado: " + clienteId));
+        return clienteRepository
+                .findById(clienteId)
+                .orElseThrow(() -> new ClienteException("Cliente não encontrado: " + clienteId));
     }
 
     private void validarPlacaDisponivel(String placa) {

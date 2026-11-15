@@ -1,5 +1,9 @@
 package io.github.gabrielivo.oficina.infrastructure.security;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -7,10 +11,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Regressão: publicar mais de um bean UserDetailsService (UserDetailsServiceImpl
@@ -29,8 +29,8 @@ class AuthenticationManagerWiringTest {
 
     @Test
     void deveAutenticarUsuarioStaffComCredenciaisValidas() {
-        Authentication result = authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken("admin", "admin123"));
+        Authentication result =
+                authenticationManager.authenticate(new UsernamePasswordAuthenticationToken("admin", "admin123"));
 
         assertTrue(result.isAuthenticated());
         assertEquals("admin", result.getName());
@@ -38,8 +38,9 @@ class AuthenticationManagerWiringTest {
 
     @Test
     void deveRecusarCredenciaisInvalidasSemEstourarPilha() {
-        assertThrows(BadCredentialsException.class, () ->
-            authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken("admin", "senha-errada")));
+        assertThrows(
+                BadCredentialsException.class,
+                () -> authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken("admin", "senha-errada")));
     }
 }

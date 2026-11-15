@@ -1,12 +1,11 @@
 package io.github.gabrielivo.oficina.domain.ordemServico;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.github.gabrielivo.oficina.domain.cliente.Cliente;
 import io.github.gabrielivo.oficina.domain.veiculo.Veiculo;
-import org.junit.jupiter.api.Test;
-
 import java.math.BigDecimal;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 class OrdemServicoTest {
 
@@ -55,9 +54,8 @@ class OrdemServicoTest {
         Veiculo veiculo = new Veiculo(cliente, "ABC1234", "Fiat", "Uno", 2020);
         OrdemServico os = new OrdemServico(cliente, veiculo);
 
-        OrdemServicoException exception = assertThrows(OrdemServicoException.class, () ->
-            os.removerItem("item-inexistente")
-        );
+        OrdemServicoException exception =
+                assertThrows(OrdemServicoException.class, () -> os.removerItem("item-inexistente"));
 
         assertEquals("Item não encontrado na OS: item-inexistente", exception.getMessage());
     }

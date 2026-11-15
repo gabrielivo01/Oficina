@@ -1,9 +1,9 @@
 package io.github.gabrielivo.oficina.domain.veiculo;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.github.gabrielivo.oficina.domain.cliente.Cliente;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class VeiculoTest {
 
@@ -24,9 +24,8 @@ class VeiculoTest {
     void deveLancarExcecaoQuandoPlacaForVazia() {
         Cliente cliente = new Cliente("11122233344", "Gabriel", null, null);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-            new Veiculo(cliente, "", "Fiat", "Uno", 2020)
-        );
+        IllegalArgumentException exception =
+                assertThrows(IllegalArgumentException.class, () -> new Veiculo(cliente, "", "Fiat", "Uno", 2020));
 
         assertEquals("Placa é obrigatória.", exception.getMessage());
     }
@@ -48,9 +47,8 @@ class VeiculoTest {
         Cliente cliente = new Cliente("11122233344", "Gabriel", null, null);
         Veiculo veiculo = new Veiculo(cliente, "ABC1234", "Fiat", "Uno", 2020);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-            veiculo.atualizar(null, "Gol", 2022)
-        );
+        IllegalArgumentException exception =
+                assertThrows(IllegalArgumentException.class, () -> veiculo.atualizar(null, "Gol", 2022));
 
         assertEquals("Marca é obrigatória.", exception.getMessage());
     }

@@ -1,5 +1,7 @@
 package io.github.gabrielivo.oficina.application.ordemServico;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.github.gabrielivo.oficina.application.cliente.ClienteService;
 import io.github.gabrielivo.oficina.application.cliente.CriarClienteCommand;
 import io.github.gabrielivo.oficina.application.cliente.EnderecoCommand;
@@ -13,19 +15,22 @@ import io.github.gabrielivo.oficina.domain.peca.PecaRepository;
 import io.github.gabrielivo.oficina.domain.veiculo.Veiculo;
 import io.github.gabrielivo.oficina.domain.veiculo.VeiculoRepository;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-
 @DataJpaTest
-@Import({OrdemServicoService.class, ClienteService.class, VeiculoService.class, PecaService.class, SimpleMeterRegistry.class})
+@Import({
+    OrdemServicoService.class,
+    ClienteService.class,
+    VeiculoService.class,
+    PecaService.class,
+    SimpleMeterRegistry.class
+})
 class OrdemServicoServiceTest {
 
     @Autowired
@@ -76,7 +81,10 @@ class OrdemServicoServiceTest {
         if (veiculoRepository.existsByPlaca(placa)) {
             // Veículo já existe, buscar pelo cliente (assumindo que o cliente tem apenas um veículo)
             var veiculos = veiculoRepository.findByClienteId(clienteId);
-            return veiculos.stream().filter(v -> v.getPlaca().equals(placa)).findFirst().orElseThrow();
+            return veiculos.stream()
+                    .filter(v -> v.getPlaca().equals(placa))
+                    .findFirst()
+                    .orElseThrow();
         } else {
             var command = new CriarVeiculoCommand(clienteId, placa, "Fiat", "Uno", 2020);
             return veiculoService.criar(command);
@@ -224,7 +232,8 @@ class OrdemServicoServiceTest {
         var commandAbrir = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
         OrdemServico os = ordemServicoService.abrir(commandAbrir);
 
-        var commandItem = new AdicionarItemOSCommand(os.getId(), "Troca de óleo", TipoItemOrdemServico.SERVICO, new BigDecimal("50.00"), null, null);
+        var commandItem = new AdicionarItemOSCommand(
+                os.getId(), "Troca de óleo", TipoItemOrdemServico.SERVICO, new BigDecimal("50.00"), null, null);
         OrdemServico osComItem = ordemServicoService.adicionarItem(commandItem);
 
         assertNotNull(osComItem.getItens());
@@ -244,7 +253,8 @@ class OrdemServicoServiceTest {
 
         Peca peca = criarPecaTeste();
 
-        var commandItem = new AdicionarItemOSCommand(os.getId(), "Filtro de óleo", TipoItemOrdemServico.PECA, new BigDecimal("25.00"), 2, peca.getId());
+        var commandItem = new AdicionarItemOSCommand(
+                os.getId(), "Filtro de óleo", TipoItemOrdemServico.PECA, new BigDecimal("25.00"), 2, peca.getId());
         OrdemServico osComItem = ordemServicoService.adicionarItem(commandItem);
 
         assertNotNull(osComItem.getItens());
@@ -269,9 +279,10 @@ class OrdemServicoServiceTest {
         Peca peca = criarPecaTeste();
 
         var itens = List.of(
-            new ItemOrdemServicoCommand("Troca de óleo", TipoItemOrdemServico.SERVICO, new BigDecimal("50.00"), null, null),
-            new ItemOrdemServicoCommand("Filtro de óleo", TipoItemOrdemServico.PECA, new BigDecimal("25.00"), 2, peca.getId())
-        );
+                new ItemOrdemServicoCommand(
+                        "Troca de óleo", TipoItemOrdemServico.SERVICO, new BigDecimal("50.00"), null, null),
+                new ItemOrdemServicoCommand(
+                        "Filtro de óleo", TipoItemOrdemServico.PECA, new BigDecimal("25.00"), 2, peca.getId()));
         var command = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId(), itens);
 
         OrdemServico os = ordemServicoService.abrir(command);
@@ -294,7 +305,8 @@ class OrdemServicoServiceTest {
         ordemServicoService.avancarStatus(os.getId());
         ordemServicoService.avancarStatus(os.getId());
 
-        OrdemServico osAprovada = ordemServicoService.responderOrcamento(os.getId(), true, "Cliente aprovou o orçamento");
+        OrdemServico osAprovada =
+                ordemServicoService.responderOrcamento(os.getId(), true, "Cliente aprovou o orçamento");
 
         assertEquals(StatusOrdemServico.EM_EXECUCAO, osAprovada.getStatus());
     }
@@ -304,9 +316,12 @@ class OrdemServicoServiceTest {
         Cliente cliente = criarClienteTeste();
         Veiculo veiculo = criarVeiculoTeste(cliente.getId());
 
-        OrdemServico osRecebida = ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
-        OrdemServico osDiagnostico = ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
-        OrdemServico osExecucao = ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
+        OrdemServico osRecebida =
+                ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
+        OrdemServico osDiagnostico =
+                ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
+        OrdemServico osExecucao =
+                ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
 
         ordemServicoService.avancarStatus(osDiagnostico.getId());
         ordemServicoService.avancarStatus(osExecucao.getId());
@@ -328,7 +343,8 @@ class OrdemServicoServiceTest {
         var commandAbrir = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
         OrdemServico os = ordemServicoService.abrir(commandAbrir);
 
-        var commandItem = new AdicionarItemOSCommand(os.getId(), "Filtro", TipoItemOrdemServico.PECA, new BigDecimal("25.00"), 1, null);
+        var commandItem = new AdicionarItemOSCommand(
+                os.getId(), "Filtro", TipoItemOrdemServico.PECA, new BigDecimal("25.00"), 1, null);
 
         assertThrows(OrdemServicoException.class, () -> {
             ordemServicoService.adicionarItem(commandItem);
@@ -342,7 +358,8 @@ class OrdemServicoServiceTest {
         var commandAbrir = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
         OrdemServico os = ordemServicoService.abrir(commandAbrir);
 
-        var commandItem = new AdicionarItemOSCommand(os.getId(), "Troca de óleo", TipoItemOrdemServico.SERVICO, new BigDecimal("50.00"), null, null);
+        var commandItem = new AdicionarItemOSCommand(
+                os.getId(), "Troca de óleo", TipoItemOrdemServico.SERVICO, new BigDecimal("50.00"), null, null);
         OrdemServico osComItem = ordemServicoService.adicionarItem(commandItem);
 
         String itemId = osComItem.getItens().get(0).getId();
@@ -378,7 +395,8 @@ class OrdemServicoServiceTest {
         int estoqueInicial = peca.getQuantidadeEstoque(); // 10
 
         // Adicionar item peça (reduz estoque)
-        var commandItem = new AdicionarItemOSCommand(os.getId(), "Filtro de óleo", TipoItemOrdemServico.PECA, new BigDecimal("25.00"), 2, peca.getId());
+        var commandItem = new AdicionarItemOSCommand(
+                os.getId(), "Filtro de óleo", TipoItemOrdemServico.PECA, new BigDecimal("25.00"), 2, peca.getId());
         OrdemServico osComItem = ordemServicoService.adicionarItem(commandItem);
 
         // Verificar que estoque foi reduzido
@@ -407,7 +425,8 @@ class OrdemServicoServiceTest {
         int estoqueInicial = peca.getQuantidadeEstoque(); // 10
 
         // Adicionar item peça (reduz estoque)
-        var commandItem = new AdicionarItemOSCommand(os.getId(), "Filtro de óleo", TipoItemOrdemServico.PECA, new BigDecimal("25.00"), 3, peca.getId());
+        var commandItem = new AdicionarItemOSCommand(
+                os.getId(), "Filtro de óleo", TipoItemOrdemServico.PECA, new BigDecimal("25.00"), 3, peca.getId());
         ordemServicoService.adicionarItem(commandItem);
 
         // Verificar que estoque foi reduzido

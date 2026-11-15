@@ -1,6 +1,3 @@
 package io.github.gabrielivo.oficina.application.usuario;
 
-public record CriarUsuarioCommand(
-    String login,
-    String senha
-) {}
+public record CriarUsuarioCommand(String login, String senha) {}

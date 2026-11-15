@@ -1,13 +1,12 @@
 package io.github.gabrielivo.oficina.domain.pagamento;
 
-import io.github.gabrielivo.oficina.domain.cliente.Cliente;
-import io.github.gabrielivo.oficina.domain.veiculo.Veiculo;
-import io.github.gabrielivo.oficina.domain.ordemServico.OrdemServico;
-import org.junit.jupiter.api.Test;
-
-import java.math.BigDecimal;
-
 import static org.junit.jupiter.api.Assertions.*;
+
+import io.github.gabrielivo.oficina.domain.cliente.Cliente;
+import io.github.gabrielivo.oficina.domain.ordemServico.OrdemServico;
+import io.github.gabrielivo.oficina.domain.veiculo.Veiculo;
+import java.math.BigDecimal;
+import org.junit.jupiter.api.Test;
 
 class PagamentoTest {
 
@@ -31,9 +30,8 @@ class PagamentoTest {
         Veiculo veiculo = new Veiculo(cliente, "ABC1234", "Fiat", "Uno", 2020);
         OrdemServico os = new OrdemServico(cliente, veiculo);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
-            new Pagamento(os, BigDecimal.ZERO, FormaPagamento.DINHEIRO)
-        );
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class, () -> new Pagamento(os, BigDecimal.ZERO, FormaPagamento.DINHEIRO));
 
         assertEquals("Valor do pagamento deve ser maior que zero.", exception.getMessage());
     }

@@ -19,11 +19,10 @@ public class EmailStatusNotificationPort implements StatusNotificationPort {
     private final MeterRegistry meterRegistry;
 
     public EmailStatusNotificationPort(
-        JavaMailSender mailSender,
-        @Value("${app.mail.from:no-reply@oficina.local}") String from,
-        @Value("${app.mail.to:cliente@oficina.local}") String to,
-        MeterRegistry meterRegistry
-    ) {
+            JavaMailSender mailSender,
+            @Value("${app.mail.from:no-reply@oficina.local}") String from,
+            @Value("${app.mail.to:cliente@oficina.local}") String to,
+            MeterRegistry meterRegistry) {
         this.mailSender = mailSender;
         this.from = from;
         this.to = to;
@@ -36,7 +35,9 @@ public class EmailStatusNotificationPort implements StatusNotificationPort {
         try {
             mailSender.send(email);
         } catch (MailException e) {
-            meterRegistry.counter("oficina.notificacoes.falhas", "canal", "email").increment();
+            meterRegistry
+                    .counter("oficina.notificacoes.falhas", "canal", "email")
+                    .increment();
             throw e;
         }
     }

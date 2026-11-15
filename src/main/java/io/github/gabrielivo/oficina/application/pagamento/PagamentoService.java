@@ -1,13 +1,10 @@
 package io.github.gabrielivo.oficina.application.pagamento;
 
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import io.github.gabrielivo.oficina.domain.ordemServico.*;
 import io.github.gabrielivo.oficina.domain.pagamento.*;
-
 import java.util.List;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PagamentoService {
@@ -15,10 +12,7 @@ public class PagamentoService {
     private final PagamentoRepository pagamentoRepository;
     private final OrdemServicoRepository ordemServicoRepository;
 
-    public PagamentoService(
-        PagamentoRepository pagamentoRepository,
-        OrdemServicoRepository ordemServicoRepository
-    ) {
+    public PagamentoService(PagamentoRepository pagamentoRepository, OrdemServicoRepository ordemServicoRepository) {
         this.pagamentoRepository = pagamentoRepository;
         this.ordemServicoRepository = ordemServicoRepository;
     }
@@ -34,8 +28,9 @@ public class PagamentoService {
 
     @Transactional(readOnly = true)
     public Pagamento buscarPorId(String id) {
-        return pagamentoRepository.findById(id)
-            .orElseThrow(() -> new PagamentoException("Pagamento não encontrado: " + id));
+        return pagamentoRepository
+                .findById(id)
+                .orElseThrow(() -> new PagamentoException("Pagamento não encontrado: " + id));
     }
 
     @Transactional(readOnly = true)
@@ -44,8 +39,9 @@ public class PagamentoService {
     }
 
     private OrdemServico buscarOrdemServico(String ordemServicoId) {
-        return ordemServicoRepository.findById(ordemServicoId)
-            .orElseThrow(() -> new OrdemServicoException("Ordem de Serviço não encontrada: " + ordemServicoId));
+        return ordemServicoRepository
+                .findById(ordemServicoId)
+                .orElseThrow(() -> new OrdemServicoException("Ordem de Serviço não encontrada: " + ordemServicoId));
     }
 
     private void validarPagamentoDuplicado(String ordemServicoId) {

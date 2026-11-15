@@ -1,9 +1,11 @@
 package io.github.gabrielivo.oficina.infrastructure.security;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,11 +19,6 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
-
-import java.io.IOException;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class JwtAuthFilterTest {
@@ -85,11 +82,8 @@ class JwtAuthFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain filterChain = new MockFilterChain();
 
-        UserDetails userDetails = User.builder()
-            .username(login)
-            .password("senha")
-            .roles("USER")
-            .build();
+        UserDetails userDetails =
+                User.builder().username(login).password("senha").roles("USER").build();
 
         when(jwtService.isTokenValido(token)).thenReturn(true);
         when(jwtService.extrairLogin(token)).thenReturn(login);
@@ -99,7 +93,8 @@ class JwtAuthFilterTest {
         jwtAuthFilter.doFilterInternal(request, response, filterChain);
 
         assertNotNull(SecurityContextHolder.getContext().getAuthentication());
-        assertEquals(login, SecurityContextHolder.getContext().getAuthentication().getName());
+        assertEquals(
+                login, SecurityContextHolder.getContext().getAuthentication().getName());
         assertTrue(SecurityContextHolder.getContext().getAuthentication().isAuthenticated());
         verify(userDetailsService).loadUserByUsername(login);
         verifyNoInteractions(clienteUserDetailsService);
@@ -115,11 +110,8 @@ class JwtAuthFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain filterChain = new MockFilterChain();
 
-        UserDetails userDetails = User.builder()
-            .username(cpf)
-            .password("")
-            .roles("CLIENTE")
-            .build();
+        UserDetails userDetails =
+                User.builder().username(cpf).password("").roles("CLIENTE").build();
 
         when(jwtService.isTokenValido(token)).thenReturn(true);
         when(jwtService.extrairLogin(token)).thenReturn(cpf);
@@ -148,7 +140,8 @@ class JwtAuthFilterTest {
         when(jwtService.extrairLogin(token)).thenReturn(cpf);
         when(jwtService.extrairTipo(token)).thenReturn(TipoPrincipal.CLIENTE);
         when(clienteUserDetailsService.loadUserByUsername(cpf))
-            .thenThrow(new org.springframework.security.core.userdetails.UsernameNotFoundException("não encontrado"));
+                .thenThrow(
+                        new org.springframework.security.core.userdetails.UsernameNotFoundException("não encontrado"));
 
         jwtAuthFilter.doFilterInternal(request, response, filterChain);
 

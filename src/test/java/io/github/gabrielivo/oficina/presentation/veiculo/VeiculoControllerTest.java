@@ -1,20 +1,19 @@
 package io.github.gabrielivo.oficina.presentation.veiculo;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
+
 import io.github.gabrielivo.oficina.application.veiculo.CriarVeiculoCommand;
 import io.github.gabrielivo.oficina.application.veiculo.VeiculoService;
 import io.github.gabrielivo.oficina.domain.cliente.Cliente;
 import io.github.gabrielivo.oficina.domain.veiculo.Veiculo;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
-
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class VeiculoControllerTest {
@@ -34,7 +33,16 @@ class VeiculoControllerTest {
         CriarVeiculoCommand command = new CriarVeiculoCommand("cliente-id", "ABC1234", "Fiat", "Uno", 2020);
         Cliente cliente = new Cliente("11122233344", "Gabriel", "61999999999", null);
         Veiculo veiculo = new Veiculo(cliente, "ABC1234", "Fiat", "Uno", 2020);
-        VeiculoResponse responseBody = new VeiculoResponse(veiculo.getId(), "cliente-id", "Gabriel", "ABC1234", "Fiat", "Uno", 2020, veiculo.getCriadoEm(), veiculo.getAtualizadoEm());
+        VeiculoResponse responseBody = new VeiculoResponse(
+                veiculo.getId(),
+                "cliente-id",
+                "Gabriel",
+                "ABC1234",
+                "Fiat",
+                "Uno",
+                2020,
+                veiculo.getCriadoEm(),
+                veiculo.getAtualizadoEm());
 
         when(veiculoMapper.toCommand(request)).thenReturn(command);
         when(veiculoService.criar(command)).thenReturn(veiculo);
@@ -51,7 +59,16 @@ class VeiculoControllerTest {
         String id = "veiculo-id";
         Cliente cliente = new Cliente("11122233344", "Gabriel", "61999999999", null);
         Veiculo veiculo = new Veiculo(cliente, "ABC1234", "Fiat", "Uno", 2020);
-        VeiculoResponse responseBody = new VeiculoResponse(veiculo.getId(), "cliente-id", "Gabriel", "ABC1234", "Fiat", "Uno", 2020, veiculo.getCriadoEm(), veiculo.getAtualizadoEm());
+        VeiculoResponse responseBody = new VeiculoResponse(
+                veiculo.getId(),
+                "cliente-id",
+                "Gabriel",
+                "ABC1234",
+                "Fiat",
+                "Uno",
+                2020,
+                veiculo.getCriadoEm(),
+                veiculo.getAtualizadoEm());
 
         when(veiculoService.buscarPorId(id)).thenReturn(veiculo);
         when(veiculoMapper.toResponse(veiculo)).thenReturn(responseBody);
@@ -67,7 +84,16 @@ class VeiculoControllerTest {
         String clienteId = "cliente-id";
         Cliente cliente = new Cliente("11122233344", "Gabriel", "61999999999", null);
         Veiculo veiculo = new Veiculo(cliente, "ABC1234", "Fiat", "Uno", 2020);
-        VeiculoResponse responseBody = new VeiculoResponse(veiculo.getId(), clienteId, "Gabriel", "ABC1234", "Fiat", "Uno", 2020, veiculo.getCriadoEm(), veiculo.getAtualizadoEm());
+        VeiculoResponse responseBody = new VeiculoResponse(
+                veiculo.getId(),
+                clienteId,
+                "Gabriel",
+                "ABC1234",
+                "Fiat",
+                "Uno",
+                2020,
+                veiculo.getCriadoEm(),
+                veiculo.getAtualizadoEm());
 
         when(veiculoService.listarPorCliente(clienteId)).thenReturn(List.of(veiculo));
         when(veiculoMapper.toResponse(veiculo)).thenReturn(responseBody);

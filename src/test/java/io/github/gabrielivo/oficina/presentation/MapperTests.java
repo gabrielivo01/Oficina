@@ -1,5 +1,6 @@
 package io.github.gabrielivo.oficina.presentation;
 
+import static org.junit.jupiter.api.Assertions.*;
 
 import io.github.gabrielivo.oficina.domain.cliente.Cliente;
 import io.github.gabrielivo.oficina.domain.cliente.Endereco;
@@ -16,11 +17,8 @@ import io.github.gabrielivo.oficina.presentation.pagamento.PagamentoMapper;
 import io.github.gabrielivo.oficina.presentation.pagamento.PagamentoRequest;
 import io.github.gabrielivo.oficina.presentation.veiculo.VeiculoMapper;
 import io.github.gabrielivo.oficina.presentation.veiculo.VeiculoRequest;
-import org.junit.jupiter.api.Test;
-
 import java.math.BigDecimal;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 class MapperTests {
 
@@ -31,9 +29,7 @@ class MapperTests {
 
     @Test
     void deveMapearClienteRequestParaCriarClienteCommand() {
-        var enderecoRequest = new EnderecoRequest(
-            "12345678", "Rua Teste", "100", "Apto 1",
-            "Centro", "Cidade", "SP");
+        var enderecoRequest = new EnderecoRequest("12345678", "Rua Teste", "100", "Apto 1", "Centro", "Cidade", "SP");
 
         var request = new ClienteRequest("11122233344", "Gabriel", "61900000000", enderecoRequest);
         var command = clienteMapper.toCommand(request);
@@ -94,7 +90,9 @@ class MapperTests {
         var veiculo = new Veiculo(cliente, "ABC1234", "Fiat", "Uno", 2020);
         var ordemServico = new OrdemServico(cliente, veiculo);
         var pagamento = new io.github.gabrielivo.oficina.domain.pagamento.Pagamento(
-                ordemServico, new BigDecimal("150.00"), io.github.gabrielivo.oficina.domain.pagamento.FormaPagamento.DINHEIRO);
+                ordemServico,
+                new BigDecimal("150.00"),
+                io.github.gabrielivo.oficina.domain.pagamento.FormaPagamento.DINHEIRO);
 
         var response = pagamentoMapper.toResponse(pagamento);
 

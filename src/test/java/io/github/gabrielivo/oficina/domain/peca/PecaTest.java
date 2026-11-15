@@ -1,11 +1,10 @@
 package io.github.gabrielivo.oficina.domain.peca;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigDecimal;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 class PecaTest {
 
@@ -144,7 +143,8 @@ class PecaTest {
     @Test
     void deveCalcularEstoqueCriticoCorretamenteComMinimoImpar() {
         // Arrange - criar peça com mínimo ímpar
-        Peca pecaMinimoImpar = new Peca("Peça Teste", "Descrição", new BigDecimal("10.00"), 3, 7); // 50% = 3.5, arredondado para baixo = 3
+        Peca pecaMinimoImpar = new Peca(
+                "Peça Teste", "Descrição", new BigDecimal("10.00"), 3, 7); // 50% = 3.5, arredondado para baixo = 3
 
         // Act
         boolean result = pecaMinimoImpar.estoqueEstaCritico();
@@ -194,56 +194,56 @@ class PecaTest {
     @Test
     void deveLancarExcecaoQuandoAtualizarComNomeNulo() {
         // Act & Assert
-        assertThrows(IllegalArgumentException.class, () ->
-            peca.atualizar(null, "Descrição", new BigDecimal("30.00"), 20));
+        assertThrows(
+                IllegalArgumentException.class, () -> peca.atualizar(null, "Descrição", new BigDecimal("30.00"), 20));
         assertEquals("Filtro de Óleo", peca.getNome()); // Não deve mudar
     }
 
     @Test
     void deveLancarExcecaoQuandoAtualizarComNomeVazio() {
         // Act & Assert
-        assertThrows(IllegalArgumentException.class, () ->
-            peca.atualizar("", "Descrição", new BigDecimal("30.00"), 20));
+        assertThrows(
+                IllegalArgumentException.class, () -> peca.atualizar("", "Descrição", new BigDecimal("30.00"), 20));
         assertEquals("Filtro de Óleo", peca.getNome()); // Não deve mudar
     }
 
     @Test
     void deveLancarExcecaoQuandoAtualizarComPrecoNulo() {
         // Act & Assert
-        assertThrows(IllegalArgumentException.class, () ->
-            peca.atualizar("Nome", "Descrição", null, 20));
+        assertThrows(IllegalArgumentException.class, () -> peca.atualizar("Nome", "Descrição", null, 20));
         assertEquals(new BigDecimal("25.00"), peca.getPreco()); // Não deve mudar
     }
 
     @Test
     void deveLancarExcecaoQuandoAtualizarComPrecoZero() {
         // Act & Assert
-        assertThrows(IllegalArgumentException.class, () ->
-            peca.atualizar("Nome", "Descrição", BigDecimal.ZERO, 20));
+        assertThrows(IllegalArgumentException.class, () -> peca.atualizar("Nome", "Descrição", BigDecimal.ZERO, 20));
         assertEquals(new BigDecimal("25.00"), peca.getPreco()); // Não deve mudar
     }
 
     @Test
     void deveLancarExcecaoQuandoAtualizarComPrecoNegativo() {
         // Act & Assert
-        assertThrows(IllegalArgumentException.class, () ->
-            peca.atualizar("Nome", "Descrição", new BigDecimal("-10.00"), 20));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> peca.atualizar("Nome", "Descrição", new BigDecimal("-10.00"), 20));
         assertEquals(new BigDecimal("25.00"), peca.getPreco()); // Não deve mudar
     }
 
     @Test
     void deveLancarExcecaoQuandoAtualizarComQuantidadeEstoqueNegativa() {
         // Act & Assert
-        assertThrows(IllegalArgumentException.class, () ->
-            peca.atualizar("Nome", "Descrição", new BigDecimal("30.00"), -1));
+        assertThrows(
+                IllegalArgumentException.class, () -> peca.atualizar("Nome", "Descrição", new BigDecimal("30.00"), -1));
         assertEquals(10, peca.getQuantidadeEstoque()); // Não deve mudar
     }
 
     @Test
     void deveLancarExcecaoQuandoAtualizarComEstoqueMinimoNegativo() {
         // Act & Assert
-        assertThrows(IllegalArgumentException.class, () ->
-            peca.atualizar("Nome", "Descrição", new BigDecimal("30.00"), 20, -1));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> peca.atualizar("Nome", "Descrição", new BigDecimal("30.00"), 20, -1));
         assertEquals(5, peca.getEstoqueMinimo()); // Não deve mudar
     }
 }

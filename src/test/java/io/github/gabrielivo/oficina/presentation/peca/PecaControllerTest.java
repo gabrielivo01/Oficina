@@ -1,7 +1,15 @@
 package io.github.gabrielivo.oficina.presentation.peca;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
 import io.github.gabrielivo.oficina.application.ordemServico.PecaService;
 import io.github.gabrielivo.oficina.domain.peca.Peca;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,15 +18,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PecaControllerTest {
@@ -49,13 +48,8 @@ class PecaControllerTest {
     @Test
     void deveCriarPecaComSucesso() {
         // Arrange
-        var request = new CriarPecaRequest(
-            "Filtro de Óleo",
-            "Filtro de óleo para motor",
-            new BigDecimal("25.00"),
-            10,
-            5
-        );
+        var request =
+                new CriarPecaRequest("Filtro de Óleo", "Filtro de óleo para motor", new BigDecimal("25.00"), 10, 5);
 
         when(pecaService.criar(any())).thenReturn(peca);
 
@@ -104,13 +98,8 @@ class PecaControllerTest {
     @Test
     void deveAtualizarPecaComSucesso() {
         // Arrange
-        var request = new AtualizarPecaRequest(
-            "Filtro Atualizado",
-            "Descrição atualizada",
-            new BigDecimal("30.00"),
-            15,
-            3
-        );
+        var request =
+                new AtualizarPecaRequest("Filtro Atualizado", "Descrição atualizada", new BigDecimal("30.00"), 15, 3);
 
         when(pecaService.atualizar(eq(pecaId), any())).thenReturn(peca);
 

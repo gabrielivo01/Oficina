@@ -18,14 +18,14 @@ public class ClienteUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String cpf) throws UsernameNotFoundException {
-        return clienteRepository.findByCpf(cpf)
-            .filter(cliente -> cliente.isAtivo())
-            .map(cliente -> User.builder()
-                .username(cliente.getCpf())
-                .password("")
-                .roles("CLIENTE")
-                .build()
-            )
-            .orElseThrow(() -> new UsernameNotFoundException("Cliente não encontrado ou inativo: " + cpf));
+        return clienteRepository
+                .findByCpf(cpf)
+                .filter(cliente -> cliente.isAtivo())
+                .map(cliente -> User.builder()
+                        .username(cliente.getCpf())
+                        .password("")
+                        .roles("CLIENTE")
+                        .build())
+                .orElseThrow(() -> new UsernameNotFoundException("Cliente não encontrado ou inativo: " + cpf));
     }
 }

@@ -1,16 +1,12 @@
 package io.github.gabrielivo.oficina.presentation.pagamento;
 
-
+import io.github.gabrielivo.oficina.application.pagamento.PagamentoService;
+import io.github.gabrielivo.oficina.domain.pagamento.Pagamento;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import io.github.gabrielivo.oficina.application.pagamento.PagamentoService;
-import io.github.gabrielivo.oficina.application.pagamento.RegistrarPagamentoCommand;
-import io.github.gabrielivo.oficina.domain.pagamento.Pagamento;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/ordens-servico/{ordemServicoId}/pagamentos")
@@ -26,9 +22,7 @@ public class PagamentoController {
 
     @PostMapping
     public ResponseEntity<PagamentoResponse> registrar(
-        @PathVariable String ordemServicoId,
-        @Valid @RequestBody PagamentoRequest request
-    ) {
+            @PathVariable String ordemServicoId, @Valid @RequestBody PagamentoRequest request) {
         Pagamento pagamento = pagamentoService.registrar(pagamentoMapper.toCommand(ordemServicoId, request));
         return ResponseEntity.status(HttpStatus.CREATED).body(pagamentoMapper.toResponse(pagamento));
     }
@@ -36,8 +30,8 @@ public class PagamentoController {
     @GetMapping
     public ResponseEntity<List<PagamentoResponse>> listarPorOrdemServico(@PathVariable String ordemServicoId) {
         return ResponseEntity.ok(pagamentoService.listarPorOrdemServico(ordemServicoId).stream()
-            .map(pagamentoMapper::toResponse)
-            .toList());
+                .map(pagamentoMapper::toResponse)
+                .toList());
     }
 
     @GetMapping("/{id}")

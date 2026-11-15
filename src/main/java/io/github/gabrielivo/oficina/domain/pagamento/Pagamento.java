@@ -32,7 +32,8 @@ public class Pagamento {
 
     public Pagamento(OrdemServico ordemServico, BigDecimal valor, FormaPagamento formaPagamento) {
         if (ordemServico == null) throw new IllegalArgumentException("Ordem de serviço é obrigatória.");
-        if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) throw new IllegalArgumentException("Valor do pagamento deve ser maior que zero.");
+        if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0)
+            throw new IllegalArgumentException("Valor do pagamento deve ser maior que zero.");
         if (formaPagamento == null) throw new IllegalArgumentException("Forma de pagamento é obrigatória.");
         this.id = UUID.randomUUID().toString();
         this.ordemServico = ordemServico;
@@ -47,9 +48,23 @@ public class Pagamento {
     }
 
     // Getters
-    public String getId() { return id; }
-    public OrdemServico getOrdemServico() { return ordemServico; }
-    public BigDecimal getValor() { return valor; }
-    public FormaPagamento getFormaPagamento() { return formaPagamento; }
-    public LocalDateTime getCriadoEm() { return criadoEm; }
+    public String getId() {
+        return id;
+    }
+
+    public OrdemServico getOrdemServico() {
+        return ordemServico;
+    }
+
+    public BigDecimal getValor() {
+        return valor;
+    }
+
+    public FormaPagamento getFormaPagamento() {
+        return formaPagamento;
+    }
+
+    public LocalDateTime getCriadoEm() {
+        return criadoEm;
+    }
 }

@@ -1,10 +1,9 @@
 package io.github.gabrielivo.oficina.application.cliente;
 
 import io.github.gabrielivo.oficina.domain.cliente.*;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class ClienteService {
@@ -19,20 +18,15 @@ public class ClienteService {
     public Cliente criar(CriarClienteCommand command) {
         validarCpfDisponivel(command.cpf());
 
-        Cliente cliente = new Cliente(
-            command.cpf(),
-            command.nome(),
-            command.telefone(),
-            criarEndereco(command.endereco())
-        );
+        Cliente cliente =
+                new Cliente(command.cpf(), command.nome(), command.telefone(), criarEndereco(command.endereco()));
 
         return clienteRepository.save(cliente);
     }
 
     @Transactional(readOnly = true)
     public Cliente buscarPorId(String id) {
-        return clienteRepository.findById(id)
-            .orElseThrow(() -> new ClienteException("Cliente não encontrado: " + id));
+        return clienteRepository.findById(id).orElseThrow(() -> new ClienteException("Cliente não encontrado: " + id));
     }
 
     @Transactional(readOnly = true)
@@ -55,9 +49,10 @@ public class ClienteService {
 
     @Transactional(readOnly = true)
     public ClienteStatusConsulta consultarStatusPorCpf(String cpf) {
-        return clienteRepository.findByCpf(cpf)
-            .map(cliente -> new ClienteStatusConsulta(true, cliente.isAtivo()))
-            .orElse(new ClienteStatusConsulta(false, false));
+        return clienteRepository
+                .findByCpf(cpf)
+                .map(cliente -> new ClienteStatusConsulta(true, cliente.isAtivo()))
+                .orElse(new ClienteStatusConsulta(false, false));
     }
 
     @Transactional
@@ -86,13 +81,12 @@ public class ClienteService {
         }
 
         return new Endereco(
-            command.cep(),
-            command.logradouro(),
-            command.numero(),
-            command.complemento(),
-            command.bairro(),
-            command.cidade(),
-            command.uf()
-        );
+                command.cep(),
+                command.logradouro(),
+                command.numero(),
+                command.complemento(),
+                command.bairro(),
+                command.cidade(),
+                command.uf());
     }
 }

@@ -4,8 +4,6 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-
-
 @Entity
 @Table(name = "cliente")
 public class Cliente {
@@ -13,7 +11,7 @@ public class Cliente {
     @Id
     @Column(length = 36)
     private String id;
-    
+
     @Column(length = 11, unique = true, nullable = false)
     private String cpf;
 
@@ -86,12 +84,35 @@ public class Cliente {
     }
 
     // Getters
-    public String getId() { return id; }
-    public String getCpf() { return cpf; }
-    public String getNome() { return nome; }
-    public String getTelefone() { return telefone; }
-    public Endereco getEndereco() { return endereco; }
-    public LocalDateTime getCriadoEm() { return criadoEm; }
-    public LocalDateTime getAtualizadoEm() { return atualizadoEm; }
-    public StatusCliente getStatus() { return status; }
+    public String getId() {
+        return id;
+    }
+
+    public String getCpf() {
+        return cpf;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public String getTelefone() {
+        return telefone;
+    }
+
+    public Endereco getEndereco() {
+        return endereco;
+    }
+
+    public LocalDateTime getCriadoEm() {
+        return criadoEm;
+    }
+
+    public LocalDateTime getAtualizadoEm() {
+        return atualizadoEm;
+    }
+
+    public StatusCliente getStatus() {
+        return status;
+    }
 }

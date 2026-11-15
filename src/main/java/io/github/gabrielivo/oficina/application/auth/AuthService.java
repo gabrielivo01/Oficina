@@ -17,9 +17,7 @@ public class AuthService {
     }
 
     public String autenticar(String login, String senha) {
-        var authentication = authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(login, senha)
-        );
+        var authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(login, senha));
 
         return jwtService.gerarToken(authentication.getName());
     }

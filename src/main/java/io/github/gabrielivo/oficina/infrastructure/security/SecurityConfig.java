@@ -34,18 +34,15 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         if (!securityEnabled) {
             // Segurança desabilitada: permitir tudo
-            http
-                    .csrf(csrf -> csrf.disable())
+            http.csrf(csrf -> csrf.disable())
                     .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
             return http.build();
         }
 
         // Segurança habilitada: configuração normal
-        http
-                .csrf(csrf -> csrf.disable())
+        http.csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
+                .authorizeHttpRequests(auth -> auth.requestMatchers(
                                 "/",
                                 "/actuator/**",
                                 "/auth/**",
@@ -56,7 +53,8 @@ public class SecurityConfig {
                                 "/webjars/**",
                                 "/favicon.ico")
                         .permitAll()
-                        .anyRequest().authenticated())
+                        .anyRequest()
+                        .authenticated())
                 .addFilterBefore(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -72,9 +70,7 @@ public class SecurityConfig {
     // recursão infinita (StackOverflowError) em vez de autenticar.
     @Bean
     public AuthenticationProvider authenticationProvider(
-        UserDetailsServiceImpl userDetailsService,
-        PasswordEncoder passwordEncoder
-    ) {
+            UserDetailsServiceImpl userDetailsService, PasswordEncoder passwordEncoder) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
         return provider;

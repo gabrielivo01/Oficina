@@ -7,23 +7,19 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.math.BigDecimal;
-import java.util.Optional;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.security.crypto.password.PasswordEncoder;
-
 import io.github.gabrielivo.oficina.application.ordemServico.CriarPecaCommand;
 import io.github.gabrielivo.oficina.application.ordemServico.PecaService;
 import io.github.gabrielivo.oficina.domain.peca.PecaRepository;
 import io.github.gabrielivo.oficina.domain.usuario.Usuario;
 import io.github.gabrielivo.oficina.domain.usuario.UsuarioRepository;
+import java.math.BigDecimal;
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class DataSeederTest {
@@ -84,11 +80,21 @@ class DataSeederTest {
 
         // Assert
         verify(pecaService, times(5)).criar(any(CriarPecaCommand.class)); // 5 pecas criadas
-        verify(pecaService).criar(eq(new CriarPecaCommand("Filtro de Óleo", "Filtro de óleo para motores", new BigDecimal("25.50"), 50, 10)));
-        verify(pecaService).criar(eq(new CriarPecaCommand("Pastilha de Freio", "Pastilha de freio dianteira", new BigDecimal("120.00"), 20, 5)));
-        verify(pecaService).criar(eq(new CriarPecaCommand("Bateria 60Ah", "Bateria automotiva 60Ah", new BigDecimal("350.00"), 15, 3)));
-        verify(pecaService).criar(eq(new CriarPecaCommand("Óleo 5W30", "Óleo lubrificante sintético", new BigDecimal("45.00"), 30, 8)));
-        verify(pecaService).criar(eq(new CriarPecaCommand("Velas de Ignição", "Jogo com 4 velas", new BigDecimal("85.00"), 25, 6)));
+        verify(pecaService)
+                .criar(eq(new CriarPecaCommand(
+                        "Filtro de Óleo", "Filtro de óleo para motores", new BigDecimal("25.50"), 50, 10)));
+        verify(pecaService)
+                .criar(eq(new CriarPecaCommand(
+                        "Pastilha de Freio", "Pastilha de freio dianteira", new BigDecimal("120.00"), 20, 5)));
+        verify(pecaService)
+                .criar(eq(new CriarPecaCommand(
+                        "Bateria 60Ah", "Bateria automotiva 60Ah", new BigDecimal("350.00"), 15, 3)));
+        verify(pecaService)
+                .criar(eq(new CriarPecaCommand(
+                        "Óleo 5W30", "Óleo lubrificante sintético", new BigDecimal("45.00"), 30, 8)));
+        verify(pecaService)
+                .criar(eq(
+                        new CriarPecaCommand("Velas de Ignição", "Jogo com 4 velas", new BigDecimal("85.00"), 25, 6)));
     }
 
     @Test

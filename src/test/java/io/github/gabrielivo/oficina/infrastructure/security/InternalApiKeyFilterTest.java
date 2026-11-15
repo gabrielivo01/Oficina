@@ -1,16 +1,15 @@
 package io.github.gabrielivo.oficina.infrastructure.security;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import java.io.IOException;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.io.IOException;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class InternalApiKeyFilterTest {
 

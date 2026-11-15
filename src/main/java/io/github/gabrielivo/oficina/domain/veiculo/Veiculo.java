@@ -74,12 +74,35 @@ public class Veiculo {
     }
 
     // Getters
-    public String getId() { return id; }
-    public Cliente getCliente() { return cliente; }
-    public String getPlaca() { return placa; }
-    public String getMarca() { return marca; }
-    public String getModelo() { return modelo; }
-    public Integer getAno() { return ano; }
-    public LocalDateTime getCriadoEm() { return criadoEm; }
-    public LocalDateTime getAtualizadoEm() { return atualizadoEm; }
+    public String getId() {
+        return id;
+    }
+
+    public Cliente getCliente() {
+        return cliente;
+    }
+
+    public String getPlaca() {
+        return placa;
+    }
+
+    public String getMarca() {
+        return marca;
+    }
+
+    public String getModelo() {
+        return modelo;
+    }
+
+    public Integer getAno() {
+        return ano;
+    }
+
+    public LocalDateTime getCriadoEm() {
+        return criadoEm;
+    }
+
+    public LocalDateTime getAtualizadoEm() {
+        return atualizadoEm;
+    }
 }

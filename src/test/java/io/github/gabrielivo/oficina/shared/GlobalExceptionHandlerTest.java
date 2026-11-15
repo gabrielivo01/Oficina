@@ -1,6 +1,10 @@
 package io.github.gabrielivo.oficina.shared;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.github.gabrielivo.oficina.domain.cliente.ClienteException;
+import java.lang.reflect.Method;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
@@ -9,11 +13,6 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.lang.reflect.Method;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class GlobalExceptionHandlerTest {
 
@@ -55,7 +54,8 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void deveTratarIllegalArgumentExceptionComoBadRequest() {
-        ResponseEntity<Map<String, String>> response = handler.handleIllegalArgument(new IllegalArgumentException("Valor inválido"));
+        ResponseEntity<Map<String, String>> response =
+                handler.handleIllegalArgument(new IllegalArgumentException("Valor inválido"));
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("Valor inválido", response.getBody().get("erro"));
@@ -63,7 +63,8 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void deveTratarResponseStatusException() {
-        ResponseEntity<Map<String, String>> response = handler.handleResponseStatus(new ResponseStatusException(HttpStatus.NOT_FOUND, "Recurso não encontrado"));
+        ResponseEntity<Map<String, String>> response = handler.handleResponseStatus(
+                new ResponseStatusException(HttpStatus.NOT_FOUND, "Recurso não encontrado"));
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertEquals("Recurso não encontrado", response.getBody().get("erro"));

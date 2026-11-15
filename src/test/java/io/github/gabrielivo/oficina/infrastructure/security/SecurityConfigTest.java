@@ -1,5 +1,8 @@
 package io.github.gabrielivo.oficina.infrastructure.security;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,9 +13,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SecurityConfigTest {
@@ -30,8 +30,7 @@ class SecurityConfigTest {
     private SecurityConfig securityConfig;
 
     @BeforeEach
-    void setUp() {
-    }
+    void setUp() {}
 
     @Test
     void deveCriarPasswordEncoderBCrypt() {
