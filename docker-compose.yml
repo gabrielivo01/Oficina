@@ -27,6 +27,7 @@ services:
       APP_MAIL_ENABLED: "false"
       APP_MAIL_FROM: no-reply@oficina.local
       APP_MAIL_TO: cliente@oficina.local
+      APP_INTERNAL_API_KEY: chave-interna-docker-apenas-para-dev
     ports:
       - "8080:8080"
 
