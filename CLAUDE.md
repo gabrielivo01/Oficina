@@ -87,6 +87,8 @@ docker compose up -d postgres mailhog         # Postgres + Mailhog (UI :8025)
 ```
 Cobertura: relatório em `target/site/jacoco/index.html`; o `verify` falha com LINE < 84% (limite no `pom.xml`, só sobe).
 CI (`.github/workflows/ci.yml`) e o hook `.githooks/pre-push` rodam o mesmo `./mvnw -q verify`.
+Hooks do Claude Code (`.claude/settings.json`, requerem `jq`): após Edit/Write em `src/**/*.java` roda o Spotless
+no arquivo; no Stop roda `./mvnw -q test-compile` e devolve os erros se não compilar (máx. 3 bloqueios seguidos).
 Admin seed: `admin`/`admin123` (`DataSeeder`). H2 console `/h2-console` (`jdbc:h2:mem:oficina`, `sa`).
 
 **Antes de dizer que terminou: rode `./mvnw -q verify` e garanta que passa.** Se falhar, corrija ou relate a falha com a saída.
