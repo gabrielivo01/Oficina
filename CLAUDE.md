@@ -90,6 +90,7 @@ CI (`.github/workflows/ci.yml`) e o hook `.githooks/pre-push` rodam o mesmo `./m
 Hooks do Claude Code (`.claude/settings.json`, requerem `jq`): após Edit/Write em `src/**/*.java` roda o Spotless
 no arquivo; no Stop roda `./mvnw -q test-compile` e devolve os erros se não compilar (máx. 3 bloqueios seguidos).
 Skill `/novo-caso-de-uso <módulo> <verbo> <coisa>` (`.claude/skills/novo-caso-de-uso/`): roteiro do padrão de caso de uso, com testes primeiro.
+Subagent `revisor` (`.claude/agents/revisor.md`, só leitura): revisa o diff contra este arquivo; use antes de propor commit.
 Admin seed: `admin`/`admin123` (`DataSeeder`). H2 console `/h2-console` (`jdbc:h2:mem:oficina`, `sa`).
 
 **Antes de dizer que terminou: rode `./mvnw -q verify` e garanta que passa.** Se falhar, corrija ou relate a falha com a saída.
