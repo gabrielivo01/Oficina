@@ -80,7 +80,8 @@ Pacote raiz `io.github.gabrielivo.oficina`; cada camada é subdividida por módu
 ```bash
 ./mvnw test                                   # testes
 ./mvnw test -Dtest="ClienteServiceTest#metodo" # um teste
-./mvnw -q verify                              # verificação completa
+./mvnw -q verify                              # verificação completa (testes, ArchUnit, spotless:check)
+./mvnw spotless:apply                         # formata (palantir-java-format) e remove imports não usados
 ./mvnw spring-boot:run                        # local: H2, segurança desligada, Swagger em /swagger-ui.html
 docker compose up -d postgres mailhog         # Postgres + Mailhog (UI :8025)
 ```

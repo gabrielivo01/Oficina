@@ -30,6 +30,8 @@
 	<properties>
 		<java.version>21</java.version>
 		<archunit.version>1.4.1</archunit.version>
+		<spotless.version>3.10.4</spotless.version>
+		<palantir-java-format.version>2.103.0</palantir-java-format.version>
 	</properties>
 	<dependencies>
 
@@ -191,6 +193,30 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
+			</plugin>
+
+			<!-- Formatação: palantir-java-format (4 espaços, 120 colunas). spotless:check roda no verify -->
+			<plugin>
+				<groupId>com.diffplug.spotless</groupId>
+				<artifactId>spotless-maven-plugin</artifactId>
+				<version>${spotless.version}</version>
+				<configuration>
+					<java>
+						<palantirJavaFormat>
+							<version>${palantir-java-format.version}</version>
+						</palantirJavaFormat>
+						<removeUnusedImports />
+						<trimTrailingWhitespace />
+						<endWithNewline />
+					</java>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 
 			<plugin>
