@@ -9,76 +9,70 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.test.util.ReflectionTestUtils;
 
 class InternalApiKeyFilterTest {
 
+    private static final String URI_INTERNA = "/internal/clientes/11122233344/status";
+
     private InternalApiKeyFilter criarFiltro(boolean securityEnabled, String apiKey) {
-        InternalApiKeyFilter filtro = new InternalApiKeyFilter();
-        ReflectionTestUtils.setField(filtro, "securityEnabled", securityEnabled);
-        ReflectionTestUtils.setField(filtro, "expectedApiKey", apiKey);
-        return filtro;
+        return new InternalApiKeyFilter(new SegurancaProperties(securityEnabled), new InternalApiProperties(apiKey));
+    }
+
+    private int executar(InternalApiKeyFilter filtro, String uri, String chaveEnviada)
+            throws ServletException, IOException {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", uri);
+        if (chaveEnviada != null) {
+            request.addHeader("X-Internal-Api-Key", chaveEnviada);
+        }
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain filterChain = new MockFilterChain();
+        filtro.doFilterInternal(request, response, filterChain);
+        return response.getStatus();
     }
 
     @Test
     void deveBloquearRequisicaoInternaSemChaveQuandoSegurancaHabilitada() throws ServletException, IOException {
-        InternalApiKeyFilter filtro = criarFiltro(true, "chave-correta");
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/internal/clientes/11122233344/status");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        FilterChain filterChain = new MockFilterChain();
-
-        filtro.doFilterInternal(request, response, filterChain);
-
-        assertEquals(401, response.getStatus());
+        assertEquals(401, executar(criarFiltro(true, "chave-correta"), URI_INTERNA, null));
     }
 
     @Test
     void deveBloquearRequisicaoInternaComChaveErradaQuandoSegurancaHabilitada() throws ServletException, IOException {
+        assertEquals(401, executar(criarFiltro(true, "chave-correta"), URI_INTERNA, "chave-errada"));
+    }
+
+    @Test
+    void deveBloquearChaveQueSoCompartilhaOPrefixo() throws ServletException, IOException {
         InternalApiKeyFilter filtro = criarFiltro(true, "chave-correta");
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/internal/clientes/11122233344/status");
-        request.addHeader("X-Internal-Api-Key", "chave-errada");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        FilterChain filterChain = new MockFilterChain();
 
-        filtro.doFilterInternal(request, response, filterChain);
-
-        assertEquals(401, response.getStatus());
+        assertEquals(401, executar(filtro, URI_INTERNA, "chave-correta-mais-longa"));
+        assertEquals(401, executar(filtro, URI_INTERNA, "chave-corret"));
     }
 
     @Test
     void devePermitirRequisicaoInternaComChaveCorretaQuandoSegurancaHabilitada() throws ServletException, IOException {
-        InternalApiKeyFilter filtro = criarFiltro(true, "chave-correta");
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/internal/clientes/11122233344/status");
-        request.addHeader("X-Internal-Api-Key", "chave-correta");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        FilterChain filterChain = new MockFilterChain();
+        assertEquals(200, executar(criarFiltro(true, "chave-correta"), URI_INTERNA, "chave-correta"));
+    }
 
-        filtro.doFilterInternal(request, response, filterChain);
-
-        assertEquals(200, response.getStatus());
+    @Test
+    void deveBloquearRequisicaoInternaQuandoChaveEsperadaNaoConfigurada() throws ServletException, IOException {
+        // Regressão: com app.internal.api-key vazia, um header vazio era aceito ("".equals("")).
+        assertEquals(401, executar(criarFiltro(true, ""), URI_INTERNA, ""));
+        assertEquals(401, executar(criarFiltro(true, null), URI_INTERNA, ""));
+        assertEquals(401, executar(criarFiltro(true, "   "), URI_INTERNA, "   "));
     }
 
     @Test
     void devePermitirRequisicaoInternaSemChaveQuandoSegurancaDesabilitada() throws ServletException, IOException {
-        InternalApiKeyFilter filtro = criarFiltro(false, "chave-correta");
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/internal/clientes/11122233344/status");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        FilterChain filterChain = new MockFilterChain();
-
-        filtro.doFilterInternal(request, response, filterChain);
-
-        assertEquals(200, response.getStatus());
+        assertEquals(200, executar(criarFiltro(false, "chave-correta"), URI_INTERNA, null));
     }
 
     @Test
     void devePermitirRequisicaoNaoInternaSemChave() throws ServletException, IOException {
-        InternalApiKeyFilter filtro = criarFiltro(true, "chave-correta");
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/clientes");
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        FilterChain filterChain = new MockFilterChain();
+        assertEquals(200, executar(criarFiltro(true, "chave-correta"), "/clientes", null));
+    }
 
-        filtro.doFilterInternal(request, response, filterChain);
-
-        assertEquals(200, response.getStatus());
+    @Test
+    void deveManterSegurancaLigadaPorPadrao() {
+        assertTrue(new SegurancaProperties(null).enabled());
     }
 }

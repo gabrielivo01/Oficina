@@ -12,15 +12,14 @@ Antes de iniciar a aplicação, é necessário realizar algumas configurações:
 
 ## 🔐 1. Desabilitar autenticação (JWT)
 
-Para facilitar os testes locais, desabilite a validação de segurança JWT:
+A segurança (JWT + chave interna) é **ligada por padrão**. Para testes locais sem token, rode com o
+perfil `local`, que a desliga (não edite o `application.properties`):
 
-No arquivo `application.properties`, configure:
-
-```properties
-app.security.enabled=false
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-> ⚠️ **Importante:** Essa configuração deve ser usada apenas em ambiente local/desenvolvimento.
+> ⚠️ **Importante:** o perfil `local` deve ser usado apenas em ambiente local/desenvolvimento.
 
 ---
 

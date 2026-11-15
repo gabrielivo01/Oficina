@@ -3,6 +3,7 @@ package io.github.gabrielivo.oficina.infrastructure.notification;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import io.github.gabrielivo.oficina.application.ordemServico.StatusNotificationPort;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.Map;
 import org.junit.jupiter.api.Test;

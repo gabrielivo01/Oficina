@@ -10,7 +10,6 @@ import io.github.gabrielivo.oficina.domain.peca.PecaRepository;
 import io.github.gabrielivo.oficina.domain.veiculo.Veiculo;
 import io.github.gabrielivo.oficina.domain.veiculo.VeiculoException;
 import io.github.gabrielivo.oficina.domain.veiculo.VeiculoRepository;
-import io.github.gabrielivo.oficina.infrastructure.notification.StatusNotificationPort;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import java.time.LocalDateTime;

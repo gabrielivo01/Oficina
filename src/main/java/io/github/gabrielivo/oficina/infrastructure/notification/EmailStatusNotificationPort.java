@@ -1,5 +1,6 @@
 package io.github.gabrielivo.oficina.infrastructure.notification;
 
+import io.github.gabrielivo.oficina.application.ordemServico.StatusNotificationPort;
 import io.github.gabrielivo.oficina.domain.ordemServico.StatusOrdemServico;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Value;

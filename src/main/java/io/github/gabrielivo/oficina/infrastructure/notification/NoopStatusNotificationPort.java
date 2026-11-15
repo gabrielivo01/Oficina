@@ -1,5 +1,6 @@
 package io.github.gabrielivo.oficina.infrastructure.notification;
 
+import io.github.gabrielivo.oficina.application.ordemServico.StatusNotificationPort;
 import io.github.gabrielivo.oficina.domain.ordemServico.StatusOrdemServico;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;

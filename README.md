@@ -182,8 +182,8 @@ Executar em Desenvolvimento
 # Executar testes
 ./mvnw test
 
-# Executar aplicação
-./mvnw spring-boot:run
+# Executar aplicação (perfil local: H2 e segurança desligada; sem perfil a segurança fica LIGADA)
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
 Configurar hooks do Git (uma vez, após clonar)
@@ -346,7 +346,8 @@ Endpoints Públicos
 - `/` - Página inicial
 - `/auth/**` - Autenticação
 - `/internal/**` - Uso servico-a-servico, protegido por `X-Internal-Api-Key`
-  (não por JWT) quando `app.security.enabled=true`
+  (não por JWT) quando `app.security.enabled=true` (padrão; só o perfil `local` desliga). A chave é comparada
+  em tempo constante e, se não estiver configurada, nenhuma chamada interna passa
 - `/v3/api-docs/**` - Documentação OpenAPI
 - `/swagger-ui/**` - Interface Swagger
 - `/actuator/**` - Health checks
@@ -515,8 +516,8 @@ Instruções para execução local
 # instalar dependências e validar projeto
 ./mvnw clean test
 
-# executar API localmente
-./mvnw spring-boot:run
+# executar API localmente (perfil local desliga a segurança, que é ligada por padrão)
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
 Endpoints locais:

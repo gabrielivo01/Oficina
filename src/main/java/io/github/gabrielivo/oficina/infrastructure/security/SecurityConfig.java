@@ -1,6 +1,6 @@
 package io.github.gabrielivo.oficina.infrastructure.security;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,15 +17,16 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@EnableConfigurationProperties({SegurancaProperties.class, InternalApiProperties.class, JwtProperties.class})
 public class SecurityConfig {
 
-    @Value("${app.security.enabled:true}")
-    private boolean securityEnabled;
-
+    private final boolean securityEnabled;
     private final JwtAuthFilter jwtAuthFilter;
     private final InternalApiKeyFilter internalApiKeyFilter;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, InternalApiKeyFilter internalApiKeyFilter) {
+    public SecurityConfig(
+            SegurancaProperties seguranca, JwtAuthFilter jwtAuthFilter, InternalApiKeyFilter internalApiKeyFilter) {
+        this.securityEnabled = seguranca.enabled();
         this.jwtAuthFilter = jwtAuthFilter;
         this.internalApiKeyFilter = internalApiKeyFilter;
     }
