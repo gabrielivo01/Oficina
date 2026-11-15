@@ -32,6 +32,7 @@
 		<archunit.version>1.4.1</archunit.version>
 		<spotless.version>3.10.4</spotless.version>
 		<palantir-java-format.version>2.103.0</palantir-java-format.version>
+		<jacoco.version>0.8.16</jacoco.version>
 	</properties>
 	<dependencies>
 
@@ -159,40 +160,57 @@
 				<version>3.2.5</version>
 			</plugin>
 
-			<!-- Geração de cobertura de testes -->
+			<!-- Cobertura de testes: relatório em target/site/jacoco; jacoco:check falha o verify abaixo do limite -->
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.11</version>
-
+				<version>${jacoco.version}</version>
+				<configuration>
+					<!-- Exclusões permitidas pela regra 9 do plano: *Application, config/**, records de Request/Response -->
+					<excludes>
+						<exclude>io/github/gabrielivo/oficina/MainApplication.class</exclude>
+						<exclude>io/github/gabrielivo/oficina/config/**</exclude>
+						<exclude>io/github/gabrielivo/oficina/presentation/**/*Request.class</exclude>
+						<exclude>io/github/gabrielivo/oficina/presentation/**/*Response.class</exclude>
+					</excludes>
+				</configuration>
 				<executions>
-
-					<!-- Injeta o agente do JaCoCo -->
 					<execution>
 						<id>prepare-agent</id>
-
 						<goals>
 							<goal>prepare-agent</goal>
 						</goals>
 					</execution>
-
-					<!-- Gera o relatório -->
 					<execution>
 						<id>report</id>
-
 						<phase>test</phase>
-
 						<goals>
 							<goal>report</goal>
 						</goals>
 					</execution>
-
+					<!-- Medido em 2026-11-15: LINE 86,61%. Limite ~2 p.p. abaixo para impedir regressão.
+					     Meta da Fase 6.2: 0.80 em todos os serviços (já atendida aqui). Só suba, nunca desça. -->
+					<execution>
+						<id>check</id>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.84</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
+					</execution>
 				</executions>
-			</plugin>
-
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
 			</plugin>
 
 			<!-- Formatação: palantir-java-format (4 espaços, 120 colunas). spotless:check roda no verify -->

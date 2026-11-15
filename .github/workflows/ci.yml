@@ -21,9 +21,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+          cache: maven
 
-      - name: Build and run tests
-        run: ./mvnw -q clean test
+      # verify = testes + ArchUnit + spotless:check + jacoco:check
+      - name: Build, tests and quality checks
+        run: ./mvnw -q clean verify
 
       - name: Build Docker image
         run: docker build -t oficina:ci-${{ github.sha }} .

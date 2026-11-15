@@ -80,11 +80,13 @@ Pacote raiz `io.github.gabrielivo.oficina`; cada camada é subdividida por módu
 ```bash
 ./mvnw test                                   # testes
 ./mvnw test -Dtest="ClienteServiceTest#metodo" # um teste
-./mvnw -q verify                              # verificação completa (testes, ArchUnit, spotless:check)
+./mvnw -q verify                              # verificação completa (testes, ArchUnit, spotless:check, jacoco:check)
 ./mvnw spotless:apply                         # formata (palantir-java-format) e remove imports não usados
 ./mvnw spring-boot:run                        # local: H2, segurança desligada, Swagger em /swagger-ui.html
 docker compose up -d postgres mailhog         # Postgres + Mailhog (UI :8025)
 ```
+Cobertura: relatório em `target/site/jacoco/index.html`; o `verify` falha com LINE < 84% (limite no `pom.xml`, só sobe).
+CI (`.github/workflows/ci.yml`) e o hook `.githooks/pre-push` rodam o mesmo `./mvnw -q verify`.
 Admin seed: `admin`/`admin123` (`DataSeeder`). H2 console `/h2-console` (`jdbc:h2:mem:oficina`, `sa`).
 
 **Antes de dizer que terminou: rode `./mvnw -q verify` e garanta que passa.** Se falhar, corrija ou relate a falha com a saída.
