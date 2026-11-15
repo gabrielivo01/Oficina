@@ -356,9 +356,11 @@ H2 (Desenvolvimento)
 - **Username**: `sa`
 - **Password**: *(vazio)*
 
-Configuração JPA
-- **DDL Auto**: `update` (cria/atualiza tabelas automaticamente)
-- **Dialect**: H2Dialect
+Configuração JPA / schema
+- **Migrations**: Flyway (`src/main/resources/db/migration`); `V1__baseline.sql` reproduz o schema que o
+  Hibernate criava. Bancos já existentes recebem baseline automático na V1 (`spring.flyway.baseline-on-migrate`)
+- **DDL Auto**: `validate` em todos os perfis (o Hibernate só confere o mapeamento contra o schema migrado)
+- **Dialect**: detectado pela URL (H2 local, PostgreSQL nos perfis `docker`/`k8s`)
 - **Show SQL**: Desabilitado em produção
 
 Monitoramento
@@ -378,7 +380,8 @@ jwt.secret=sua-chave-secreta-deve-ter-pelo-menos-256-bits-aqui
 
 # Banco H2
 spring.datasource.url=jdbc:h2:mem:oficina;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-spring.jpa.hibernate.ddl-auto=update
+spring.jpa.hibernate.ddl-auto=validate
+spring.flyway.baseline-on-migrate=true
 
 # Swagger
 springdoc.api-docs.path=/v3/api-docs

@@ -1,5 +1,10 @@
 # Modelo de Dados
 
+O schema é versionado pelo **Flyway** em `src/main/resources/db/migration` (o Hibernate só valida,
+`ddl-auto=validate`). `V1__baseline.sql` reproduz o schema que o Hibernate criava no PostgreSQL até a Fase 3,
+com os mesmos nomes de constraint; bancos que já existiam recebem baseline na V1 sem reexecutá-la. Toda mudança
+de tabela/coluna é uma migration nova e é refletida neste documento.
+
 ```dbml
 Table usuario {
   id varchar(36) [primary key] // UUID.toString()
