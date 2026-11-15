@@ -31,7 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
-CLAUDE.md
 
 ### Claude Code (personal/local settings) ###
 .claude/settings.local.json
@@ -46,3 +45,6 @@ application-local.properties
 
 ### local-only scratch docs (not part of the deliverable) ###
 implementation_instruction.md
+
+### plano de trabalho local (não versionado) ###
+documentacao/plano_fase4.md
