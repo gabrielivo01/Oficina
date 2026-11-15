@@ -257,15 +257,18 @@ Peças
 - `GET /pecas/estoque-critico` - Peças com estoque crítico
 
 Ordens de Serviço
-- `GET /ordens-servico` - Listar ordens ativas com ordenação por prioridade de status
+- `GET /ordens-servico?status=RECEBIDA&status=EM_DIAGNOSTICO&pagina=0&tamanho=20` - Listagem paginada
+  (`{conteudo, pagina, tamanho, totalElementos, totalPaginas}`), ordenada por prioridade de status; sem
+  `status`, só as OS ativas (exclui `FINALIZADA`, `ENTREGUE`, `CANCELADA`)
 - `POST /ordens-servico` - Criar nova OS com cliente, veículo, serviços e peças
 - `GET /ordens-servico/{id}` - Buscar por ID
 - `GET /ordens-servico/{id}/status` - Consultar status atual
-- `POST /ordens-servico/{id}/aprovacao-orcamento` - Aprovar ou recusar orçamento
+- `GET /ordens-servico/{id}/historico` - Histórico de status (anterior, novo, data/hora, origem, motivo)
+- `POST /ordens-servico/{id}/aprovacao-orcamento` - Aprovar (→ `AGUARDANDO_PAGAMENTO`) ou recusar orçamento
 - `PATCH /ordens-servico/{id}/avancar-status` - Avançar status
 - `POST /ordens-servico/{id}/itens` - Adicionar item
 - `DELETE /ordens-servico/{id}/itens/{itemId}` - Remover item
-- `POST /ordens-servico/{id}/cancelar` - Cancelar OS
+- `POST /ordens-servico/{id}/cancelar` - Cancelar OS (corpo opcional `{"motivo": "..."}`; → `CANCELADA`)
 
 Exemplo de abertura de OS
 ```json

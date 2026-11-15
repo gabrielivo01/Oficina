@@ -14,9 +14,10 @@ import io.github.gabrielivo.oficina.infrastructure.notification.StatusNotificati
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,14 +76,16 @@ public class OrdemServicoService {
                 .orElseThrow(() -> new OrdemServicoException("Ordem de Serviço não encontrada: " + id));
     }
 
+    /** Paginação e filtro de status feitos no banco, ordenados por prioridade de atendimento. */
     @Transactional(readOnly = true)
-    public List<OrdemServico> listarTodas() {
-        return ordemServicoRepository.findAll().stream()
-                .filter(os -> os.getStatus() != StatusOrdemServico.FINALIZADA
-                        && os.getStatus() != StatusOrdemServico.ENTREGUE)
-                .sorted(Comparator.comparingInt((OrdemServico os) -> prioridadeStatus(os.getStatus()))
-                        .thenComparing(OrdemServico::getCriadoEm))
-                .toList();
+    public Page<OrdemServico> listar(ListarOrdensServicoCommand command) {
+        return ordemServicoRepository.buscarPorStatusOrdenadoPorPrioridade(
+                command.status(), PageRequest.of(command.pagina(), command.tamanho()));
+    }
+
+    @Transactional(readOnly = true)
+    public List<HistoricoStatusOrdemServico> listarHistorico(String id) {
+        return List.copyOf(buscarPorId(id).getHistorico());
     }
 
     @Transactional(readOnly = true)
@@ -197,13 +200,18 @@ public class OrdemServicoService {
                 .record(Duration.between(statusDesde, LocalDateTime.now()));
     }
 
+    /**
+     * Cancela a OS (status CANCELADA + histórico) e, enquanto o estoque ainda vive neste serviço, repõe as peças e
+     * remove os itens. A compensação entre serviços vem com a Saga (Fase 5).
+     */
     @Transactional
-    public OrdemServico cancelar(String id) {
+    public OrdemServico cancelar(String id, String motivo) {
         OrdemServico os = buscarPorId(id);
+        StatusOrdemServico statusAnterior = os.getStatus();
+        LocalDateTime statusDesde = os.getStatusDesde();
 
-        if (os.getStatus() == StatusOrdemServico.FINALIZADA || os.getStatus() == StatusOrdemServico.ENTREGUE) {
-            throw new OrdemServicoException("Não é possível cancelar uma OS finalizada ou entregue.");
-        }
+        os.cancelar(OrigemMudancaStatus.USUARIO, motivo);
+        registrarTempoNoStatus(statusAnterior, statusDesde);
 
         // Repor o estoque de todas as peças utilizadas nesta OS
         for (ItemOrdemServico item : os.getItens()) {
@@ -247,15 +255,5 @@ public class OrdemServicoService {
         };
 
         os.adicionarItem(item);
-    }
-
-    private int prioridadeStatus(StatusOrdemServico status) {
-        return switch (status) {
-            case EM_EXECUCAO -> 0;
-            case AGUARDANDO_APROVACAO -> 1;
-            case EM_DIAGNOSTICO -> 2;
-            case RECEBIDA -> 3;
-            default -> 4;
-        };
     }
 }

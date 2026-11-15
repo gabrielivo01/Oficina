@@ -3,9 +3,12 @@ package io.github.gabrielivo.oficina.presentation.ordemServico;
 import io.github.gabrielivo.oficina.application.ordemServico.AbrirOrdemServicoCommand;
 import io.github.gabrielivo.oficina.application.ordemServico.AdicionarItemOSCommand;
 import io.github.gabrielivo.oficina.application.ordemServico.ItemOrdemServicoCommand;
+import io.github.gabrielivo.oficina.domain.ordemServico.HistoricoStatusOrdemServico;
 import io.github.gabrielivo.oficina.domain.ordemServico.ItemOrdemServico;
 import io.github.gabrielivo.oficina.domain.ordemServico.OrdemServico;
+import io.github.gabrielivo.oficina.presentation.PaginaResponse;
 import java.util.List;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -43,6 +46,27 @@ public class OrdemServicoMapper {
                 itens,
                 os.getCriadoEm(),
                 os.getAtualizadoEm());
+    }
+
+    public PaginaResponse<OrdemServicoResponse> toResponse(Page<OrdemServico> pagina) {
+        return new PaginaResponse<>(
+                pagina.getContent().stream().map(this::toResponse).toList(),
+                pagina.getNumber(),
+                pagina.getSize(),
+                pagina.getTotalElements(),
+                pagina.getTotalPages());
+    }
+
+    public List<HistoricoStatusResponse> toHistoricoResponse(List<HistoricoStatusOrdemServico> historico) {
+        return historico.stream()
+                .map(h -> new HistoricoStatusResponse(
+                        h.getSequencia(),
+                        h.getStatusAnterior(),
+                        h.getStatusNovo(),
+                        h.getAlteradoEm(),
+                        h.getOrigem(),
+                        h.getMotivo()))
+                .toList();
     }
 
     private ItemOSResponse toItemResponse(ItemOrdemServico item) {

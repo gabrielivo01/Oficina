@@ -1,7 +1,10 @@
 package io.github.gabrielivo.oficina.presentation.ordemServico;
 
+import io.github.gabrielivo.oficina.application.ordemServico.ListarOrdensServicoCommand;
 import io.github.gabrielivo.oficina.application.ordemServico.OrdemServicoService;
 import io.github.gabrielivo.oficina.domain.ordemServico.OrdemServico;
+import io.github.gabrielivo.oficina.domain.ordemServico.StatusOrdemServico;
+import io.github.gabrielivo.oficina.presentation.PaginaResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -10,6 +13,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Set;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -50,12 +55,48 @@ public class OrdemServicoController {
         return ResponseEntity.ok(ordemServicoMapper.toResponse(ordemServicoService.buscarPorId(id)));
     }
 
+    @Operation(
+            summary = "Listar ordens de serviço",
+            description = "Lista paginada, ordenada por prioridade de atendimento (EM_EXECUCAO, AGUARDANDO_PAGAMENTO,"
+                    + " AGUARDANDO_APROVACAO, EM_DIAGNOSTICO, RECEBIDA) e depois pela abertura. Sem 'status',"
+                    + " traz só as OS ativas (exclui FINALIZADA, ENTREGUE e CANCELADA).")
     @GetMapping
-    public ResponseEntity<List<OrdemServicoResponse>> listarTodas() {
-        List<OrdemServicoResponse> lista = ordemServicoService.listarTodas().stream()
-                .map(ordemServicoMapper::toResponse)
-                .toList();
-        return ResponseEntity.ok(lista);
+    public ResponseEntity<PaginaResponse<OrdemServicoResponse>> listar(
+            @Parameter(description = "Filtro de status (pode repetir: ?status=RECEBIDA&status=EM_DIAGNOSTICO)")
+                    @RequestParam(required = false)
+                    Set<StatusOrdemServico> status,
+            @Parameter(description = "Página, a partir de 0") @RequestParam(defaultValue = "0") int pagina,
+            @Parameter(description = "Tamanho da página (1 a 100)")
+                    @RequestParam(defaultValue = "" + ListarOrdensServicoCommand.TAMANHO_PADRAO)
+                    int tamanho) {
+        Page<OrdemServico> resultado =
+                ordemServicoService.listar(new ListarOrdensServicoCommand(status, pagina, tamanho));
+        return ResponseEntity.ok(ordemServicoMapper.toResponse(resultado));
+    }
+
+    @Operation(
+            summary = "Histórico de status da OS",
+            description = "Todas as mudanças de status, da abertura à situação atual, com origem e motivo")
+    @GetMapping("/{id}/historico")
+    public ResponseEntity<List<HistoricoStatusResponse>> listarHistorico(@PathVariable String id) {
+        return ResponseEntity.ok(ordemServicoMapper.toHistoricoResponse(ordemServicoService.listarHistorico(id)));
+    }
+
+    @Operation(
+            summary = "Cancelar ordem de serviço",
+            description = "Permitido em qualquer status antes de FINALIZADA; registra o motivo no histórico",
+            responses = {
+                @ApiResponse(
+                        responseCode = "200",
+                        description = "OS cancelada",
+                        content = @Content(schema = @Schema(implementation = OrdemServicoResponse.class))),
+                @ApiResponse(responseCode = "422", description = "OS finalizada, entregue ou já cancelada")
+            })
+    @PostMapping("/{id}/cancelar")
+    public ResponseEntity<OrdemServicoResponse> cancelar(
+            @PathVariable String id, @Valid @RequestBody(required = false) CancelarOrdemServicoRequest request) {
+        OrdemServico os = ordemServicoService.cancelar(id, request == null ? null : request.motivo());
+        return ResponseEntity.ok(ordemServicoMapper.toResponse(os));
     }
 
     @Operation(

@@ -29,23 +29,36 @@ Convenções gerais:
 
 ## Ordem de Serviço (`domain/ordemServico`)
 - É aberta com cliente e veículo existentes (`OrdemServicoService.abrir`) e já pode receber itens.
-- Status inicial: `RECEBIDA`. Fluxo linear, definido em `StatusOrdemServico.podeTransicionarPara`:
+- Status inicial: `RECEBIDA`. Máquina de estados em `StatusOrdemServico.podeTransicionarPara`
+  (seção 3.1 do `plano_fase4.md`):
 
   ```
-  RECEBIDA → EM_DIAGNOSTICO → AGUARDANDO_APROVACAO → EM_EXECUCAO → FINALIZADA → ENTREGUE
+  RECEBIDA → EM_DIAGNOSTICO → AGUARDANDO_APROVACAO → AGUARDANDO_PAGAMENTO → EM_EXECUCAO → FINALIZADA → ENTREGUE
+  (qualquer status antes de FINALIZADA) → CANCELADA
   ```
-- `avancarStatus()` vai só para o próximo status. `atualizarStatusExterno(s)` aceita apenas uma
-  transição válida. Transição inválida → `OrdemServicoException`.
-- Resposta de orçamento: só quando o status é `AGUARDANDO_APROVACAO`. Se aprovado, vai para `EM_EXECUCAO`;
-  se recusado, permanece em `AGUARDANDO_APROVACAO` (o `statusDesde` é renovado).
-- Cada mudança de status atualiza `statusDesde` (base da métrica `oficina.ordens_servico.tempo_no_status`)
-  e dispara `StatusNotificationPort.enviarAtualizacao`, quando há um adapter configurado.
-- Itens não podem ser **adicionados** com a OS em `FINALIZADA` ou `ENTREGUE`.
+  `ENTREGUE` e `CANCELADA` são finais. "Ativos" = todos menos `FINALIZADA`, `ENTREGUE` e `CANCELADA`.
+- **Toda** mudança de status passa por `OrdemServico.alterarStatus(novo, origem, motivo)`: valida a transição
+  (inválida → `OrdemServicoException`, sem efeito), atualiza `statusDesde` (base da métrica
+  `oficina.ordens_servico.tempo_no_status`) e grava uma linha no **histórico** (`HistoricoStatusOrdemServico`):
+  status anterior, novo, data/hora, origem (`USUARIO` | `SAGA` | `SISTEMA`) e motivo (≤ 255 caracteres).
+  A abertura grava a primeira linha (anterior nulo → `RECEBIDA`). Consulta: `GET /ordens-servico/{id}/historico`.
+- `avancarStatus()` vai só para o próximo status (origem `USUARIO`). `atualizarStatusExterno(s)` aceita apenas
+  uma transição válida (origem `SISTEMA`).
+- Resposta de orçamento: só quando o status é `AGUARDANDO_APROVACAO`. Se aprovado, vai para
+  `AGUARDANDO_PAGAMENTO` (o pagamento é cobrado antes da execução; até a Saga, o avanço para `EM_EXECUCAO`
+  é manual). Se recusado, permanece em `AGUARDANDO_APROVACAO` (o `statusDesde` é renovado, sem linha de
+  histórico; a compensação que cancela a OS vem na Fase 5).
+- Após mudança de status pelo service, dispara `StatusNotificationPort.enviarAtualizacao`, quando há um
+  adapter configurado.
+- Itens não podem ser **adicionados** com a OS fora de um status ativo (`FINALIZADA`, `ENTREGUE`, `CANCELADA`).
 - `valorTotal` = soma de `valor × quantidade` dos itens, recalculada a cada alteração.
-- Cancelamento (`OrdemServicoService.cancelar`): proibido em `FINALIZADA`/`ENTREGUE`. Repõe o estoque das
-  peças e remove todos os itens. Não existe status `CANCELADA`, então o status atual é mantido.
-- A listagem geral exclui `FINALIZADA`/`ENTREGUE` e ordena por prioridade
-  (`EM_EXECUCAO`, `AGUARDANDO_APROVACAO`, `EM_DIAGNOSTICO`, `RECEBIDA`) e depois por `criadoEm`.
+- Cancelamento (`OrdemServico.cancelar` / `POST /ordens-servico/{id}/cancelar`, motivo opcional): permitido em
+  qualquer status ativo; leva a OS para `CANCELADA` e registra o motivo (padrão "Cancelamento solicitado").
+  Em `FINALIZADA`, `ENTREGUE` ou `CANCELADA` → `OrdemServicoException`. Enquanto o estoque vive neste serviço,
+  o service também repõe o estoque das peças e remove os itens. A compensação entre serviços vem na Fase 5.
+- Listagem (`GET /ordens-servico?status=...&pagina=0&tamanho=20`): filtro de status e paginação feitos no
+  banco (tamanho 1–100). Sem filtro, só as ativas. Ordem fixa por prioridade (`EM_EXECUCAO`,
+  `AGUARDANDO_PAGAMENTO`, `AGUARDANDO_APROVACAO`, `EM_DIAGNOSTICO`, `RECEBIDA`, demais) e depois por `criadoEm`.
 
 ## Item da Ordem de Serviço (`ItemOrdemServico`)
 - Tipo `SERVICO`: quantidade fixa em 1 e nenhuma referência a peça.
@@ -73,5 +86,6 @@ Constavam no `instructions.md`, mas **não** existem no código. Ficam aqui como
 tratadas como comportamento atual:
 - "OS não pode ser finalizada sem itens": `avancarStatus` não verifica itens.
 - "Valor do item ≥ 0": `ItemOrdemServico` não valida o valor.
-- Remoção de item de OS `FINALIZADA`/`ENTREGUE`: `removerItem` não verifica o status (só a adição verifica).
+- Remoção de item de OS `FINALIZADA`/`ENTREGUE`/`CANCELADA`: `removerItem` não verifica o status (só a adição
+  verifica). Resolvido na Fase 3 (itens passam ao Execution Service).
 - "Data de fechamento" ao finalizar: não existe campo próprio; usa-se `statusDesde`.

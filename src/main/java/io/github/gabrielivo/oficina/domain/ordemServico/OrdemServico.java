@@ -44,6 +44,10 @@ public class OrdemServico {
     @Column(name = "status_desde")
     private LocalDateTime statusDesde;
 
+    @OneToMany(mappedBy = "ordemServico", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sequencia ASC")
+    private List<HistoricoStatusOrdemServico> historico = new ArrayList<>();
+
     public OrdemServico() {}
 
     public OrdemServico(Cliente cliente, Veiculo veiculo) {
@@ -53,36 +57,75 @@ public class OrdemServico {
         this.status = StatusOrdemServico.RECEBIDA;
         this.valorTotal = BigDecimal.ZERO;
         this.criadoEm = LocalDateTime.now();
-        this.atualizadoEm = LocalDateTime.now();
+        this.atualizadoEm = this.criadoEm;
         this.statusDesde = this.criadoEm;
+        registrarHistorico(null, OrigemMudancaStatus.USUARIO, "Abertura da OS", this.criadoEm);
+    }
+
+    /**
+     * Único ponto de mudança de status do agregado: valida a transição (seção 3.1), atualiza {@code statusDesde} e
+     * grava a linha em {@code historico_status_os}. Os demais métodos de negócio delegam para cá.
+     */
+    public void alterarStatus(StatusOrdemServico novoStatus, OrigemMudancaStatus origem, String motivo) {
+        if (origem == null) {
+            throw new IllegalArgumentException("Origem da mudança de status é obrigatória.");
+        }
+        if (motivo != null && motivo.length() > HistoricoStatusOrdemServico.TAMANHO_MAXIMO_MOTIVO) {
+            throw new IllegalArgumentException(
+                    "Motivo deve ter no máximo " + HistoricoStatusOrdemServico.TAMANHO_MAXIMO_MOTIVO + " caracteres.");
+        }
+        validarTransicaoPara(novoStatus);
+        StatusOrdemServico anterior = this.status;
+        this.status = novoStatus;
+        LocalDateTime agora = LocalDateTime.now();
+        this.atualizadoEm = agora;
+        this.statusDesde = agora;
+        registrarHistorico(anterior, origem, motivo, agora);
     }
 
     public void avancarStatus() {
-        StatusOrdemServico proximoStatus = this.status.proximoStatus();
-        validarTransicaoPara(proximoStatus);
-        this.status = proximoStatus;
-        marcarMudancaDeStatus();
+        alterarStatus(this.status.proximoStatus(), OrigemMudancaStatus.USUARIO, "Avanço manual de status");
     }
 
+    /** Orçamento aprovado: a OS passa a aguardar o pagamento, que é cobrado antes da execução. */
     public void aprovarOrcamento() {
         validarStatusParaRespostaOrcamento();
-        this.status = StatusOrdemServico.EM_EXECUCAO;
-        marcarMudancaDeStatus();
+        alterarStatus(StatusOrdemServico.AGUARDANDO_PAGAMENTO, OrigemMudancaStatus.USUARIO, "Orçamento aprovado");
     }
 
+    /**
+     * Recusa ainda sem efeito de status (a compensação que cancela a OS vem com a Saga, Fase 5): só renova
+     * {@code statusDesde}. Como o status não muda, não há linha de histórico.
+     */
     public void recusarOrcamento() {
         validarStatusParaRespostaOrcamento();
-        this.status = StatusOrdemServico.AGUARDANDO_APROVACAO;
-        marcarMudancaDeStatus();
+        LocalDateTime agora = LocalDateTime.now();
+        this.atualizadoEm = agora;
+        this.statusDesde = agora;
     }
 
     public void atualizarStatusExterno(StatusOrdemServico novoStatus) {
         if (novoStatus == null) {
             throw new OrdemServicoException("Status é obrigatório.");
         }
-        validarTransicaoPara(novoStatus);
-        this.status = novoStatus;
-        marcarMudancaDeStatus();
+        alterarStatus(novoStatus, OrigemMudancaStatus.SISTEMA, "Status atualizado via integração externa");
+    }
+
+    /** Cancela a OS; permitido em qualquer status antes de FINALIZADA. */
+    public void cancelar(OrigemMudancaStatus origem, String motivo) {
+        if (!this.status.podeTransicionarPara(StatusOrdemServico.CANCELADA)) {
+            throw new OrdemServicoException("Não é possível cancelar uma OS com status " + this.status + ".");
+        }
+        alterarStatus(
+                StatusOrdemServico.CANCELADA,
+                origem,
+                motivo == null || motivo.isBlank() ? "Cancelamento solicitado" : motivo.strip());
+    }
+
+    private void registrarHistorico(
+            StatusOrdemServico anterior, OrigemMudancaStatus origem, String motivo, LocalDateTime quando) {
+        this.historico.add(new HistoricoStatusOrdemServico(
+                this, this.historico.size() + 1, anterior, this.status, quando, origem, motivo));
     }
 
     public void limparItens() {
@@ -125,19 +168,14 @@ public class OrdemServico {
     }
 
     private void validarAlteracaoDeItens() {
-        if (this.status == StatusOrdemServico.FINALIZADA || this.status == StatusOrdemServico.ENTREGUE) {
-            throw new OrdemServicoException("Não é possível alterar itens em uma OS finalizada ou entregue.");
+        if (!this.status.isAtivo()) {
+            throw new OrdemServicoException(
+                    "Não é possível alterar itens em uma OS finalizada, entregue ou cancelada.");
         }
     }
 
     private void marcarAtualizacao() {
         this.atualizadoEm = LocalDateTime.now();
-    }
-
-    private void marcarMudancaDeStatus() {
-        LocalDateTime agora = LocalDateTime.now();
-        this.atualizadoEm = agora;
-        this.statusDesde = agora;
     }
 
     // Getters
@@ -175,5 +213,9 @@ public class OrdemServico {
 
     public LocalDateTime getStatusDesde() {
         return statusDesde;
+    }
+
+    public List<HistoricoStatusOrdemServico> getHistorico() {
+        return Collections.unmodifiableList(historico);
     }
 }

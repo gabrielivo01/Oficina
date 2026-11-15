@@ -63,11 +63,30 @@ Table ordem_servico {
   id varchar(36) [primary key] // UUID.toString()
   cliente_id varchar(36) [not null, ref: > cliente.id]
   veiculo_id varchar(36) [not null, ref: > veiculo.id]
-  status varchar(30) [not null] // RECEBIDA, EM_DIAGNOSTICO, AGUARDANDO_APROVACAO, EM_EXECUCAO, FINALIZADA, ENTREGUE
+  status varchar(30) [not null] // RECEBIDA, EM_DIAGNOSTICO, AGUARDANDO_APROVACAO, AGUARDANDO_PAGAMENTO, EM_EXECUCAO, FINALIZADA, ENTREGUE, CANCELADA (V2)
   status_desde timestamp // atualizado só em transição de status; base da métrica de tempo médio por status
   valor_total decimal(10,2)
   criado_em timestamp
   atualizado_em timestamp
+
+  indexes {
+    (status, criado_em) [name: 'idx_ordem_servico_status_criado_em'] // listagem paginada com filtro de status (V2)
+  }
+}
+
+Table historico_status_os { // V2: uma linha por mudança de status (e uma na abertura)
+  id varchar(36) [primary key] // UUID.toString()
+  ordem_servico_id varchar(36) [not null, ref: > ordem_servico.id]
+  sequencia integer [not null] // 1 = abertura; único por OS (desempata transições no mesmo instante)
+  status_anterior varchar(30) // nulo na abertura
+  status_novo varchar(30) [not null]
+  alterado_em timestamp [not null]
+  origem varchar(20) [not null] // USUARIO, SAGA, SISTEMA
+  motivo varchar(255)
+
+  indexes {
+    (ordem_servico_id, sequencia) [unique]
+  }
 }
 
 Table item_ordem_servico {
@@ -145,6 +164,16 @@ erDiagram
         timestamp status_desde
         decimal valor_total
     }
+    HISTORICO_STATUS_OS {
+        varchar id PK
+        varchar ordem_servico_id FK
+        integer sequencia
+        varchar status_anterior
+        varchar status_novo
+        timestamp alterado_em
+        varchar origem
+        varchar motivo
+    }
     ITEM_ORDEM_SERVICO {
         varchar id PK
         varchar ordem_servico_id FK
@@ -166,6 +195,7 @@ erDiagram
     CLIENTE ||--o{ ORDEM_SERVICO : "solicita"
     VEICULO ||--o{ ORDEM_SERVICO : "é atendido em"
     ORDEM_SERVICO ||--o{ ITEM_ORDEM_SERVICO : "contém"
+    ORDEM_SERVICO ||--|{ HISTORICO_STATUS_OS : "registra mudanças de status"
     PECA ||--o{ ITEM_ORDEM_SERVICO : "referenciada por (tipo=PECA)"
     ORDEM_SERVICO ||--o| PAGAMENTO : "é paga por"
 ```
@@ -196,6 +226,9 @@ atende isso nativamente sem desnormalização.
   tipo `SERVICO` não referencia peça, um item do tipo `PECA` referencia
   exatamente uma (`ItemOrdemServico`/`domain/ordemServico/AdicionarItemCommand`
   validam essa regra).
+- **`ordem_servico` ↔ `historico_status_os`** (1:N, ao menos 1): gravado em cascata pelo agregado
+  `OrdemServico` (todo `alterarStatus` adiciona uma linha); nunca alterado depois de gravado. OS anteriores à
+  V2 receberam uma linha inicial com o status vigente (origem `SISTEMA`).
 - **`peca` ↔ `item_ordem_servico`** (1:N, opcional): só itens do tipo `PECA`
   têm `peca_id` preenchido; adicionar um item desses decrementa
   `peca.quantidade_estoque` (`PecaService`/`OrdemServicoService`), removê-lo

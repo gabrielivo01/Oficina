@@ -18,10 +18,13 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
 
 @DataJpaTest
 @Import({
@@ -56,6 +59,9 @@ class OrdemServicoServiceTest {
 
     @Autowired
     PecaService pecaService;
+
+    @Autowired
+    TestEntityManager entityManager;
 
     private Cliente criarClienteTeste() {
         var endereco = new EnderecoCommand("12345678", "Rua Teste", "123", null, "Centro", "São Paulo", "SP");
@@ -176,10 +182,10 @@ class OrdemServicoServiceTest {
         var command2 = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
         ordemServicoService.abrir(command2);
 
-        List<OrdemServico> ordens = ordemServicoService.listarTodas();
+        Page<OrdemServico> ordens = ordemServicoService.listar(new ListarOrdensServicoCommand(null, 0, 20));
 
         assertNotNull(ordens);
-        assertTrue(ordens.size() >= 2);
+        assertTrue(ordens.getTotalElements() >= 2);
     }
 
     @Test
@@ -296,7 +302,7 @@ class OrdemServicoServiceTest {
     }
 
     @Test
-    void deveAprovarOrcamentoEAtualizarStatusParaExecucao() {
+    void deveAprovarOrcamentoEAtualizarStatusParaAguardandoPagamento() {
         Cliente cliente = criarClienteTeste();
         Veiculo veiculo = criarVeiculoTeste(cliente.getId());
         var commandAbrir = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
@@ -308,7 +314,7 @@ class OrdemServicoServiceTest {
         OrdemServico osAprovada =
                 ordemServicoService.responderOrcamento(os.getId(), true, "Cliente aprovou o orçamento");
 
-        assertEquals(StatusOrdemServico.EM_EXECUCAO, osAprovada.getStatus());
+        assertEquals(StatusOrdemServico.AGUARDANDO_PAGAMENTO, osAprovada.getStatus());
     }
 
     @Test
@@ -316,24 +322,106 @@ class OrdemServicoServiceTest {
         Cliente cliente = criarClienteTeste();
         Veiculo veiculo = criarVeiculoTeste(cliente.getId());
 
-        OrdemServico osRecebida =
-                ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
-        OrdemServico osDiagnostico =
-                ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
-        OrdemServico osExecucao =
-                ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
+        OrdemServico osRecebida = abrirEAvancar(cliente, veiculo, 0);
+        OrdemServico osDiagnostico = abrirEAvancar(cliente, veiculo, 1);
+        OrdemServico osPagamento = abrirEAvancar(cliente, veiculo, 3);
+        OrdemServico osExecucao = abrirEAvancar(cliente, veiculo, 4);
+        abrirEAvancar(cliente, veiculo, 5); // FINALIZADA: fora da listagem padrão
+        OrdemServico osCancelada = abrirEAvancar(cliente, veiculo, 0);
+        ordemServicoService.cancelar(osCancelada.getId(), "teste"); // CANCELADA: fora da listagem padrão
 
-        ordemServicoService.avancarStatus(osDiagnostico.getId());
-        ordemServicoService.avancarStatus(osExecucao.getId());
-        ordemServicoService.avancarStatus(osExecucao.getId());
-        ordemServicoService.avancarStatus(osExecucao.getId());
+        Page<OrdemServico> ordens = ordemServicoService.listar(new ListarOrdensServicoCommand(null, 0, 20));
 
-        List<OrdemServico> ordens = ordemServicoService.listarTodas();
+        assertEquals(4, ordens.getTotalElements());
+        assertEquals(
+                List.of(osExecucao.getId(), osPagamento.getId(), osDiagnostico.getId(), osRecebida.getId()),
+                ordens.getContent().stream().map(OrdemServico::getId).toList());
+    }
 
-        assertEquals(3, ordens.size());
-        assertEquals(osExecucao.getId(), ordens.get(0).getId());
-        assertEquals(osDiagnostico.getId(), ordens.get(1).getId());
-        assertEquals(osRecebida.getId(), ordens.get(2).getId());
+    @Test
+    void deveFiltrarListagemPorStatusEPaginar() {
+        Cliente cliente = criarClienteTeste();
+        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
+        OrdemServico primeira = abrirEAvancar(cliente, veiculo, 0);
+        OrdemServico segunda = abrirEAvancar(cliente, veiculo, 0);
+        OrdemServico terceira = abrirEAvancar(cliente, veiculo, 0);
+        OrdemServico finalizada = abrirEAvancar(cliente, veiculo, 5);
+
+        Page<OrdemServico> paginaUm =
+                ordemServicoService.listar(new ListarOrdensServicoCommand(Set.of(StatusOrdemServico.RECEBIDA), 0, 2));
+        Page<OrdemServico> paginaDois =
+                ordemServicoService.listar(new ListarOrdensServicoCommand(Set.of(StatusOrdemServico.RECEBIDA), 1, 2));
+        Page<OrdemServico> finalizadas = ordemServicoService.listar(
+                new ListarOrdensServicoCommand(Set.of(StatusOrdemServico.FINALIZADA), 0, 20));
+
+        assertEquals(3, paginaUm.getTotalElements());
+        assertEquals(2, paginaUm.getTotalPages());
+        assertEquals(
+                List.of(primeira.getId(), segunda.getId()),
+                paginaUm.getContent().stream().map(OrdemServico::getId).toList());
+        assertEquals(
+                List.of(terceira.getId()),
+                paginaDois.getContent().stream().map(OrdemServico::getId).toList());
+        assertEquals(
+                List.of(finalizada.getId()),
+                finalizadas.getContent().stream().map(OrdemServico::getId).toList());
+    }
+
+    @Test
+    void devePersistirHistoricoDeStatusDaOrdemServico() {
+        Cliente cliente = criarClienteTeste();
+        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
+        OrdemServico os = abrirEAvancar(cliente, veiculo, 2);
+        entityManager.flush();
+        entityManager.clear();
+
+        List<HistoricoStatusOrdemServico> historico = ordemServicoService.listarHistorico(os.getId());
+
+        assertEquals(
+                List.of(
+                        StatusOrdemServico.RECEBIDA,
+                        StatusOrdemServico.EM_DIAGNOSTICO,
+                        StatusOrdemServico.AGUARDANDO_APROVACAO),
+                historico.stream()
+                        .map(HistoricoStatusOrdemServico::getStatusNovo)
+                        .toList());
+        assertEquals(
+                List.of(1, 2, 3),
+                historico.stream()
+                        .map(HistoricoStatusOrdemServico::getSequencia)
+                        .toList());
+    }
+
+    @Test
+    void deveLancarExcecaoAoListarHistoricoDeOsInexistente() {
+        assertThrows(OrdemServicoException.class, () -> ordemServicoService.listarHistorico("inexistente"));
+    }
+
+    @Test
+    void deveCancelarOrdemServicoERegistrarHistorico() {
+        Cliente cliente = criarClienteTeste();
+        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
+        OrdemServico os = abrirEAvancar(cliente, veiculo, 1);
+
+        OrdemServico cancelada = ordemServicoService.cancelar(os.getId(), "Cliente desistiu");
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals(StatusOrdemServico.CANCELADA, cancelada.getStatus());
+        HistoricoStatusOrdemServico ultimo =
+                ordemServicoService.listarHistorico(os.getId()).getLast();
+        assertEquals(StatusOrdemServico.EM_DIAGNOSTICO, ultimo.getStatusAnterior());
+        assertEquals(StatusOrdemServico.CANCELADA, ultimo.getStatusNovo());
+        assertEquals(OrigemMudancaStatus.USUARIO, ultimo.getOrigem());
+        assertEquals("Cliente desistiu", ultimo.getMotivo());
+    }
+
+    private OrdemServico abrirEAvancar(Cliente cliente, Veiculo veiculo, int avancos) {
+        OrdemServico os = ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
+        for (int i = 0; i < avancos; i++) {
+            os = ordemServicoService.avancarStatus(os.getId());
+        }
+        return os;
     }
 
     @Test
@@ -435,7 +523,7 @@ class OrdemServicoServiceTest {
         assertEquals(estoqueInicial - 3, pecaAposAdicao.get().getQuantidadeEstoque()); // 7
 
         // Cancelar ordem de serviço (restaura estoque)
-        OrdemServico osCancelada = ordemServicoService.cancelar(os.getId());
+        OrdemServico osCancelada = ordemServicoService.cancelar(os.getId(), null);
 
         // Verificar que itens foram removidos
         assertTrue(osCancelada.getItens().isEmpty());
@@ -456,6 +544,7 @@ class OrdemServicoServiceTest {
         // Avançar status até FINALIZADA
         ordemServicoService.avancarStatus(os.getId()); // EM_DIAGNOSTICO
         ordemServicoService.avancarStatus(os.getId()); // AGUARDANDO_APROVACAO
+        ordemServicoService.avancarStatus(os.getId()); // AGUARDANDO_PAGAMENTO
         ordemServicoService.avancarStatus(os.getId()); // EM_EXECUCAO
         OrdemServico osFinalizada = ordemServicoService.avancarStatus(os.getId()); // FINALIZADA
 
@@ -463,7 +552,7 @@ class OrdemServicoServiceTest {
 
         // Tentar cancelar deve lançar exceção
         assertThrows(OrdemServicoException.class, () -> {
-            ordemServicoService.cancelar(os.getId());
+            ordemServicoService.cancelar(os.getId(), "tarde demais");
         });
     }
 }
