@@ -56,5 +56,34 @@ services:
       - "1025:1025"
       - "8025:8025"
 
+  # Prometheus + Grafana below are a local stand-in for the real
+  # kube-prometheus-stack deployment in oficina-infra-k8s (k8s/observability/).
+  # For a one-off local demo only — not used in the real k8s deployment.
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: prometheus_oficina
+    restart: unless-stopped
+    depends_on:
+      - app
+    volumes:
+      - ./observability/local/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: grafana_oficina
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./observability/local/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/local/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+
 volumes:
   postgres_data:

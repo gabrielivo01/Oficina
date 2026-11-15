@@ -1,0 +1,11 @@
+# Scrape config for the docker-compose demo stack (see docker-compose.yml).
+# Not used by the real deployment — that uses kube-prometheus-stack via
+# oficina-infra-k8s (see k8s/observability/ in that repository).
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: oficina-app
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["app:8080"]
