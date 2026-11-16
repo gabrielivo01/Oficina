@@ -15,8 +15,6 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -24,9 +22,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * mapeamento ({@code ddl-auto=validate}) contra o schema criado por elas. Também exercita no PostgreSQL real o que os
  * testes legados só cobrem em H2 (check de status, histórico e consulta paginada).
  */
-@SpringBootTest
-@Import(PostgresContainerConfig.class)
-class MigracoesPostgresTest {
+class MigracoesPostgresTest extends IntegracaoTestBase {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -45,12 +41,12 @@ class MigracoesPostgresTest {
         List<String> versoes = jdbcTemplate.queryForList(
                 "select version from flyway_schema_history where success order by installed_rank", String.class);
 
-        assertThat(versoes).startsWith("1", "2");
+        assertThat(versoes).startsWith("1", "2", "3");
         assertThat(jdbcTemplate.queryForObject(
                         "select count(*) from information_schema.tables where table_name in"
-                                + " ('ordem_servico', 'historico_status_os')",
+                                + " ('ordem_servico', 'historico_status_os', 'outbox', 'inbox')",
                         Integer.class))
-                .isEqualTo(2);
+                .isEqualTo(4);
     }
 
     @Test

@@ -5,10 +5,14 @@ import static org.junit.jupiter.api.Assertions.*;
 import io.github.gabrielivo.oficina.application.cliente.ClienteService;
 import io.github.gabrielivo.oficina.application.cliente.CriarClienteCommand;
 import io.github.gabrielivo.oficina.application.cliente.EnderecoCommand;
+import io.github.gabrielivo.oficina.application.mensageria.MensageriaProperties;
+import io.github.gabrielivo.oficina.application.mensageria.OutboxService;
 import io.github.gabrielivo.oficina.application.veiculo.CriarVeiculoCommand;
 import io.github.gabrielivo.oficina.application.veiculo.VeiculoService;
 import io.github.gabrielivo.oficina.domain.cliente.Cliente;
 import io.github.gabrielivo.oficina.domain.cliente.ClienteRepository;
+import io.github.gabrielivo.oficina.domain.mensageria.MensagemOutbox;
+import io.github.gabrielivo.oficina.domain.mensageria.MensagemOutboxRepository;
 import io.github.gabrielivo.oficina.domain.ordemServico.*;
 import io.github.gabrielivo.oficina.domain.peca.Peca;
 import io.github.gabrielivo.oficina.domain.peca.PecaRepository;
@@ -21,10 +25,14 @@ import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
+import tools.jackson.databind.json.JsonMapper;
 
 @DataJpaTest
 @Import({
@@ -32,9 +40,23 @@ import org.springframework.data.domain.Page;
     ClienteService.class,
     VeiculoService.class,
     PecaService.class,
-    SimpleMeterRegistry.class
+    OutboxService.class,
+    SimpleMeterRegistry.class,
+    OrdemServicoServiceTest.MensageriaTestConfig.class
 })
 class OrdemServicoServiceTest {
+
+    @TestConfiguration
+    @EnableConfigurationProperties(MensageriaProperties.class)
+    static class MensageriaTestConfig {
+        @Bean
+        JsonMapper jsonMapper() {
+            return JsonMapper.builder().build();
+        }
+    }
+
+    @Autowired
+    private MensagemOutboxRepository outboxRepository;
 
     @Autowired
     private OrdemServicoRepository ordemServicoRepository;
@@ -414,6 +436,51 @@ class OrdemServicoServiceTest {
         assertEquals(StatusOrdemServico.CANCELADA, ultimo.getStatusNovo());
         assertEquals(OrigemMudancaStatus.USUARIO, ultimo.getOrigem());
         assertEquals("Cliente desistiu", ultimo.getMotivo());
+    }
+
+    private List<MensagemOutbox> outboxDaOs(String osId) {
+        return outboxRepository.findAll().stream()
+                .filter(m -> m.getPayload().contains("\"osId\":\"" + osId + "\""))
+                .sorted(java.util.Comparator.comparing(MensagemOutbox::getCriadoEm))
+                .toList();
+    }
+
+    @Test
+    void deveGravarUmEventoNoOutboxPorTransicaoNaMesmaTransacao() {
+        Cliente cliente = criarClienteTeste();
+        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
+        OrdemServico os = abrirEAvancar(cliente, veiculo, 0);
+        assertTrue(outboxDaOs(os.getId()).isEmpty(), "abertura não publica evento");
+
+        ordemServicoService.avancarStatus(os.getId());
+        ordemServicoService.cancelar(os.getId(), "Cliente desistiu");
+
+        List<MensagemOutbox> mensagens = outboxDaOs(os.getId());
+        assertEquals(2, mensagens.size());
+        assertTrue(mensagens.stream()
+                .allMatch(m -> m.getTipo().equals("StatusOrdemServicoAlterado")
+                        && m.getExchange().equals("oficina.eventos")
+                        && m.getRoutingKey().equals("os.status-alterado")
+                        && !m.isEnviada()));
+        assertTrue(mensagens.get(0).getPayload().contains("\"statusNovo\":\"EM_DIAGNOSTICO\""));
+        assertTrue(mensagens.get(1).getPayload().contains("\"statusNovo\":\"CANCELADA\""));
+        assertTrue(mensagens.get(1).getPayload().contains("\"motivo\":\"Cliente desistiu\""));
+        assertTrue(mensagens
+                .get(1)
+                .getPayload()
+                .contains("\"messageId\":\"" + mensagens.get(1).getId() + "\""));
+    }
+
+    @Test
+    void naoDeveGravarEventoQuandoOrcamentoRecusadoNaoMudaStatus() {
+        Cliente cliente = criarClienteTeste();
+        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
+        OrdemServico os = abrirEAvancar(cliente, veiculo, 2);
+        int antes = outboxDaOs(os.getId()).size();
+
+        ordemServicoService.responderOrcamento(os.getId(), false, "Caro demais");
+
+        assertEquals(antes, outboxDaOs(os.getId()).size());
     }
 
     private OrdemServico abrirEAvancar(Cliente cliente, Veiculo veiculo, int avancos) {

@@ -89,6 +89,28 @@ Table historico_status_os { // V2: uma linha por mudança de status (e uma na ab
   }
 }
 
+Table outbox { // V3: Transactional Outbox (ADR 0009); gravado na transação da mudança de estado
+  id varchar(36) [primary key] // = messageId do envelope
+  tipo varchar(100) [not null] // ex.: StatusOrdemServicoAlterado
+  exchange varchar(100) [not null]
+  routing_key varchar(100) [not null]
+  payload text [not null] // envelope JSON completo, publicado como está
+  criado_em timestamp [not null]
+  enviado_em timestamp // nulo = pendente; preenchido só após o publisher confirm
+  tentativas integer [not null, default: 0]
+  ultimo_erro varchar(500)
+
+  indexes {
+    (enviado_em, criado_em) [name: 'idx_outbox_pendentes']
+  }
+}
+
+Table inbox { // V3: idempotência dos consumidores (ADR 0009)
+  message_id varchar(64) [primary key] // messageId da mensagem processada
+  tipo varchar(100) [not null]
+  processado_em timestamp [not null]
+}
+
 Table item_ordem_servico {
   id varchar(36) [primary key] // UUID.toString()
   ordem_servico_id varchar(36) [not null, ref: > ordem_servico.id]
@@ -229,6 +251,10 @@ atende isso nativamente sem desnormalização.
 - **`ordem_servico` ↔ `historico_status_os`** (1:N, ao menos 1): gravado em cascata pelo agregado
   `OrdemServico` (todo `alterarStatus` adiciona uma linha); nunca alterado depois de gravado. OS anteriores à
   V2 receberam uma linha inicial com o status vigente (origem `SISTEMA`).
+- **`outbox` e `inbox`**: tabelas técnicas, sem chave estrangeira para o modelo. Uma linha do outbox nasce na
+  mesma transação da mudança de estado (hoje: cada transição de status da OS gera um
+  `StatusOrdemServicoAlterado`) e é publicada depois do commit; o inbox guarda o `messageId` de cada mensagem
+  consumida, na mesma transação do processamento. Limpeza periódica das linhas antigas: pendente (ADR 0009).
 - **`peca` ↔ `item_ordem_servico`** (1:N, opcional): só itens do tipo `PECA`
   têm `peca_id` preenchido; adicionar um item desses decrementa
   `peca.quantidade_estoque` (`PecaService`/`OrdemServicoService`), removê-lo

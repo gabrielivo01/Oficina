@@ -21,7 +21,12 @@ import org.springframework.security.core.Authentication;
  * infinita (StackOverflowError) em vez de autenticar. Só um teste que resolve
  * o AuthenticationManager REAL do contexto (não um mock) pega isso.
  */
-@SpringBootTest
+@SpringBootTest(
+        properties = {
+            // Contexto H2 sem broker: não consome nem publica (e não toca um RabbitMQ de dev que esteja no ar)
+            "spring.rabbitmq.listener.simple.auto-startup=false",
+            "app.mensageria.outbox.publicador-habilitado=false"
+        })
 class AuthenticationManagerWiringTest {
 
     @Autowired

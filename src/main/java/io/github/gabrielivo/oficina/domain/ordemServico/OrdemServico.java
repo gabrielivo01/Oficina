@@ -48,6 +48,10 @@ public class OrdemServico {
     @OrderBy("sequencia ASC")
     private List<HistoricoStatusOrdemServico> historico = new ArrayList<>();
 
+    /** Eventos de domínio ainda não extraídos pelo service (não persistidos). */
+    @Transient
+    private final List<StatusOrdemServicoAlterado> eventosPendentes = new ArrayList<>();
+
     public OrdemServico() {}
 
     public OrdemServico(Cliente cliente, Veiculo veiculo) {
@@ -63,8 +67,9 @@ public class OrdemServico {
     }
 
     /**
-     * Único ponto de mudança de status do agregado: valida a transição (seção 3.1), atualiza {@code statusDesde} e
-     * grava a linha em {@code historico_status_os}. Os demais métodos de negócio delegam para cá.
+     * Único ponto de mudança de status do agregado: valida a transição (seção 3.1), atualiza {@code statusDesde},
+     * grava a linha em {@code historico_status_os} e registra o evento {@link StatusOrdemServicoAlterado}. Os demais
+     * métodos de negócio delegam para cá.
      */
     public void alterarStatus(StatusOrdemServico novoStatus, OrigemMudancaStatus origem, String motivo) {
         if (origem == null) {
@@ -81,6 +86,14 @@ public class OrdemServico {
         this.atualizadoEm = agora;
         this.statusDesde = agora;
         registrarHistorico(anterior, origem, motivo, agora);
+        this.eventosPendentes.add(new StatusOrdemServicoAlterado(this.id, anterior, novoStatus, origem, motivo, agora));
+    }
+
+    /** Devolve e limpa os eventos registrados desde a última extração (na ordem em que ocorreram). */
+    public List<StatusOrdemServicoAlterado> extrairEventos() {
+        List<StatusOrdemServicoAlterado> eventos = List.copyOf(eventosPendentes);
+        eventosPendentes.clear();
+        return eventos;
     }
 
     public void avancarStatus() {

@@ -1,5 +1,7 @@
 package io.github.gabrielivo.oficina.application.ordemServico;
 
+import io.github.gabrielivo.oficina.application.mensageria.MensageriaProperties;
+import io.github.gabrielivo.oficina.application.mensageria.OutboxService;
 import io.github.gabrielivo.oficina.domain.cliente.Cliente;
 import io.github.gabrielivo.oficina.domain.cliente.ClienteException;
 import io.github.gabrielivo.oficina.domain.cliente.ClienteRepository;
@@ -12,9 +14,10 @@ import io.github.gabrielivo.oficina.domain.veiculo.VeiculoException;
 import io.github.gabrielivo.oficina.domain.veiculo.VeiculoRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -27,7 +30,8 @@ public class OrdemServicoService {
     private final ClienteRepository clienteRepository;
     private final VeiculoRepository veiculoRepository;
     private final PecaRepository pecaRepository;
-    private final StatusNotificationPort statusNotificationPort;
+    private final OutboxService outboxService;
+    private final MensageriaProperties mensageria;
     private final MeterRegistry meterRegistry;
 
     public OrdemServicoService(
@@ -35,13 +39,15 @@ public class OrdemServicoService {
             ClienteRepository clienteRepository,
             VeiculoRepository veiculoRepository,
             PecaRepository pecaRepository,
-            @Autowired(required = false) StatusNotificationPort statusNotificationPort,
+            OutboxService outboxService,
+            MensageriaProperties mensageria,
             MeterRegistry meterRegistry) {
         this.ordemServicoRepository = ordemServicoRepository;
         this.clienteRepository = clienteRepository;
         this.veiculoRepository = veiculoRepository;
         this.pecaRepository = pecaRepository;
-        this.statusNotificationPort = statusNotificationPort;
+        this.outboxService = outboxService;
+        this.mensageria = mensageria;
         this.meterRegistry = meterRegistry;
     }
 
@@ -151,12 +157,7 @@ public class OrdemServicoService {
         LocalDateTime statusDesde = os.getStatusDesde();
         os.avancarStatus();
         registrarTempoNoStatus(statusAnterior, statusDesde);
-        OrdemServico osAtualizada = ordemServicoRepository.save(os);
-        if (statusNotificationPort != null) {
-            statusNotificationPort.enviarAtualizacao(
-                    osAtualizada.getId(), osAtualizada.getStatus(), "Status da OS atualizado");
-        }
-        return osAtualizada;
+        return salvarEPublicarEventos(os);
     }
 
     @Transactional
@@ -170,12 +171,7 @@ public class OrdemServicoService {
             os.recusarOrcamento();
         }
         registrarTempoNoStatus(statusAnterior, statusDesde);
-        OrdemServico osAtualizada = ordemServicoRepository.save(os);
-        if (statusNotificationPort != null) {
-            statusNotificationPort.enviarAtualizacao(
-                    osAtualizada.getId(), osAtualizada.getStatus(), "Orçamento respondido");
-        }
-        return osAtualizada;
+        return salvarEPublicarEventos(os);
     }
 
     @Transactional
@@ -185,18 +181,38 @@ public class OrdemServicoService {
         LocalDateTime statusDesde = os.getStatusDesde();
         os.atualizarStatusExterno(novoStatus);
         registrarTempoNoStatus(statusAnterior, statusDesde);
-        OrdemServico osAtualizada = ordemServicoRepository.save(os);
-        if (statusNotificationPort != null) {
-            statusNotificationPort.enviarAtualizacao(
-                    osAtualizada.getId(), osAtualizada.getStatus(), "Status atualizado via integração externa");
-        }
-        return osAtualizada;
+        return salvarEPublicarEventos(os);
     }
 
     private void registrarTempoNoStatus(StatusOrdemServico statusAnterior, LocalDateTime statusDesde) {
         meterRegistry
                 .timer("oficina.ordens_servico.tempo_no_status", "status", statusAnterior.name())
                 .record(Duration.between(statusDesde, LocalDateTime.now()));
+    }
+
+    /**
+     * Salva a OS e grava no outbox, na mesma transação, um {@code StatusOrdemServicoAlterado} por transição ocorrida.
+     * A notificação ao cliente é feita por quem consome o evento, depois do commit.
+     */
+    private OrdemServico salvarEPublicarEventos(OrdemServico os) {
+        OrdemServico salva = ordemServicoRepository.save(os);
+        for (StatusOrdemServicoAlterado evento : os.extrairEventos()) {
+            Instant alteradoEm =
+                    evento.alteradoEm().atZone(ZoneId.systemDefault()).toInstant();
+            outboxService.registrar(
+                    mensageria.exchangeEventos(),
+                    StatusOrdemServicoAlteradoPayload.ROUTING_KEY,
+                    StatusOrdemServicoAlteradoPayload.TIPO,
+                    evento.ordemServicoId(),
+                    alteradoEm,
+                    new StatusOrdemServicoAlteradoPayload(
+                            evento.statusAnterior(),
+                            evento.statusNovo(),
+                            evento.origem(),
+                            evento.motivo(),
+                            alteradoEm));
+        }
+        return salva;
     }
 
     /**
@@ -224,7 +240,7 @@ public class OrdemServicoService {
         // Limpar todos os itens da OS usando o método de domínio
         os.limparItens();
 
-        return ordemServicoRepository.save(os);
+        return salvarEPublicarEventos(os);
     }
 
     @Transactional(readOnly = true)

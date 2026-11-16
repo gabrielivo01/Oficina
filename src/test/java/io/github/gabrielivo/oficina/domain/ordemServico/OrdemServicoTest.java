@@ -272,6 +272,54 @@ class OrdemServicoTest {
         assertEquals("Cancelamento solicitado", os.getHistorico().getLast().getMotivo());
     }
 
+    // ---------------------------------------------------------------- eventos de domínio
+
+    @Test
+    void naoDeveRegistrarEventoNaAbertura() {
+        assertThat(novaOs().extrairEventos()).isEmpty();
+    }
+
+    @Test
+    void deveRegistrarUmEventoPorTransicaoEEsvaziarAoExtrair() {
+        OrdemServico os = novaOs();
+
+        os.avancarStatus();
+        os.cancelar(OrigemMudancaStatus.SAGA, "Compensação");
+
+        assertThat(os.extrairEventos())
+                .extracting(
+                        StatusOrdemServicoAlterado::ordemServicoId,
+                        StatusOrdemServicoAlterado::statusAnterior,
+                        StatusOrdemServicoAlterado::statusNovo,
+                        StatusOrdemServicoAlterado::origem,
+                        StatusOrdemServicoAlterado::motivo)
+                .containsExactly(
+                        tuple(
+                                os.getId(),
+                                StatusOrdemServico.RECEBIDA,
+                                StatusOrdemServico.EM_DIAGNOSTICO,
+                                OrigemMudancaStatus.USUARIO,
+                                "Avanço manual de status"),
+                        tuple(
+                                os.getId(),
+                                StatusOrdemServico.EM_DIAGNOSTICO,
+                                StatusOrdemServico.CANCELADA,
+                                OrigemMudancaStatus.SAGA,
+                                "Compensação"));
+        assertThat(os.extrairEventos()).isEmpty();
+    }
+
+    @Test
+    void naoDeveRegistrarEventoQuandoTransicaoInvalidaOuOrcamentoRecusado() {
+        OrdemServico os = osEm(StatusOrdemServico.AGUARDANDO_APROVACAO);
+        os.extrairEventos();
+
+        assertThrows(OrdemServicoException.class, () -> os.atualizarStatusExterno(StatusOrdemServico.ENTREGUE));
+        os.recusarOrcamento();
+
+        assertThat(os.extrairEventos()).isEmpty();
+    }
+
     @Test
     void naoDevePermitirAdicionarItemEmOsCancelada() {
         OrdemServico os = osEm(StatusOrdemServico.CANCELADA);
