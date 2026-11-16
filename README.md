@@ -5,7 +5,7 @@ Oficina - Sistema de Gestão de Oficina Mecânica
 
 Visão Geral
 
-API REST do OS Service para clientes, veículos, ordens de serviço e autenticação JWT. Catálogo, estoque e execução pertencem ao [Execution Service](../oficina-execution-service/README.md); orçamentos e cobranças pertencem ao [Billing Service](../oficina-billing-service/README.md). O OS Service coordena o fluxo distribuído pela Saga.
+API REST do OS Service para clientes, veículos, ordens de serviço e autenticação JWT. Catálogo, estoque e execução pertencem ao [Execution Service](https://github.com/gabrielivo01/oficina-execution-service#readme); orçamentos e cobranças pertencem ao [Billing Service](https://github.com/gabrielivo01/oficina-billing-service#readme). O OS Service coordena o fluxo distribuído pela Saga.
 
 Arquitetura
 
@@ -196,7 +196,7 @@ Ordens de Serviço
 - `POST /ordens-servico/{id}/cancelar` - Solicitar cancelamento (corpo opcional `{"motivo": "..."}`; a Saga marca `CANCELADA` após as compensações)
 
 Execution Service
-- Catálogo, estoque, reservas e fila de execução: [README do serviço](../oficina-execution-service/README.md)
+- Catálogo, estoque, reservas e fila de execução: [README do serviço](https://github.com/gabrielivo01/oficina-execution-service#readme)
 - Inclui `GET/POST/PUT/DELETE /pecas`, reposição/alertas e endpoints de tarefa em `/tarefas`.
 
 Mensageria
@@ -246,41 +246,54 @@ Exemplo de resposta de orçamento
 }
 ```
 
-Cobranças são atendidas pelo [Billing Service](../oficina-billing-service/README.md); não há endpoint
+Cobranças são atendidas pelo [Billing Service](https://github.com/gabrielivo01/oficina-billing-service#readme); não há endpoint
 de pagamento manual nem tabela de pagamento neste serviço.
 
-Testes
+## Testes
 
-Executar Todos os Testes
+| Tipo | Onde | Roda em |
+|---|---|---|
+| Unitários (domínio, serviços com Mockito, controllers) | `src/test/java/**` | `./mvnw verify` |
+| Contrato das mensagens da Saga | `contratos/ContratosMensagensTest` + `src/test/resources/contratos/*.json` | `./mvnw verify` |
+| Saga em memória (orquestrador, outbox e inbox reais; Execution e Billing falsos) | `saga/memoria/SagaEmMemoriaTest` | `./mvnw verify` |
+| BDD (Cucumber, português): fluxo completo e as 3 compensações | `src/test/resources/features/saga_ordem_servico.feature` | `./mvnw verify` (relatório em `target/cucumber-reports/`) |
+| Integração com PostgreSQL e RabbitMQ reais (Testcontainers) | `integracao/*IT` | `./mvnw verify -Pintegracao` (exige Docker) |
+
 ```bash
-./mvnw test
+./mvnw verify                                  # testes, ArchUnit, Spotless e JaCoCo (cobertura mínima de 80%)
+./mvnw verify -Pintegracao                     # + testes de integração (Docker)
+./mvnw test -Dtest="*OrdemServico*"            # um conjunto de testes
 ```
 
-Executar Testes Específicos
-```bash
-# Testes de peça
-./mvnw test -Dtest="*Peca*"
-
-# Testes de ordem de serviço
-./mvnw test -Dtest="*OrdemServico*"
-
-# Teste específico
-./mvnw test -Dtest="PecaServiceTest"
-```
-
-Cobertura de Testes
-- **PecaTest**: Testes unitários da entidade Peca
-- **OrdemServicoServiceTest**: Testes de serviço de OS
-- **PecaControllerTest**: Testes de controller REST
-- **ClienteControllerTest**: Testes de controller REST
+A estratégia de testes está no [ADR 0013](./documentacao/adrs/0013-estrategia-de-testes-em-dois-planos.md).
 
 ## Demonstração e qualidade
 
 - Collection e environment Postman: [`documentacao/postman/`](./documentacao/postman/).
 - Roteiro de apresentação (até 15 minutos): [`documentacao/roteiro_video.md`](./documentacao/roteiro_video.md).
-- O CI roda apenas testes unitários/mockados com exclusão explícita dos testes que iniciam infraestrutura.
-- SonarCloud requer que a organização/projeto seja criado e `SONAR_TOKEN` configurado nos segredos do GitHub;
-  os identificadores ficam em `sonar-project.properties`.
+
+### CI/CD (Fase 4)
+
+Cada microsserviço tem pipelines próprios no GitHub Actions:
+
+- **CI** (`.github/workflows/ci.yml`, em PR e push na `main`): build, `./mvnw verify` (testes, ArchUnit, Spotless e
+  JaCoCo ≥ 80%), análise no [SonarCloud](https://sonarcloud.io/summary/new_code?id=gabrielivo01_oficina) com espera
+  do Quality Gate, build da imagem Docker e, num job separado, os testes de integração (`-Pintegracao`).
+- **CD** (`.github/workflows/cd.yml`, em push na `main`): publica a imagem no GHCR, sobe um cluster Kubernetes
+  (kind) com a plataforma do [`oficina-infra-k8s`](https://github.com/gabrielivo01/oficina-infra-k8s) (RabbitMQ,
+  OTel/Jaeger, Prometheus/Grafana), implanta os 3 serviços, espera os rollouts e health checks e roda o smoke test
+  E2E da Saga (abre uma OS e a acompanha até `FINALIZADA`). Em falha, publica os logs dos pods como artefato.
+- **Branch `main` protegida** nos 3 serviços: merge só por pull request, com os dois jobs do CI obrigatórios
+  (incluindo o Quality Gate) e sem push direto, inclusive para administradores
+  (`scripts/proteger_branch_main.sh`).
+
+Fluxo de uma mudança:
+
+```bash
+git checkout -b minha-mudanca && git push origin minha-mudanca
+gh pr create --fill          # o CI roda no PR; o merge só é liberado com as checagens verdes
+gh pr merge --squash
+```
 
 Segurança
 
