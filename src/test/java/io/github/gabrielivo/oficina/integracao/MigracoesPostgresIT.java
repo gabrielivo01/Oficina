@@ -22,7 +22,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * mapeamento ({@code ddl-auto=validate}) contra o schema criado por elas. Também exercita no PostgreSQL real o que os
  * testes legados só cobrem em H2 (check de status, histórico e consulta paginada).
  */
-class MigracoesPostgresTest extends IntegracaoTestBase {
+class MigracoesPostgresIT extends IntegracaoTestBase {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;

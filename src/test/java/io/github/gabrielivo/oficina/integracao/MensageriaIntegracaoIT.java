@@ -34,7 +34,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  * Aceite da etapa 2.4 com PostgreSQL e RabbitMQ reais: gravar no outbox → a mensagem chega à fila e é consumida;
  * mensagem duplicada → processada uma vez; tipo desconhecido → DLQ; mensagem não roteável → falha de publicação.
  */
-class MensageriaIntegracaoTest extends IntegracaoTestBase {
+class MensageriaIntegracaoIT extends IntegracaoTestBase {
 
     private static final Duration ESPERA = Duration.ofSeconds(20);
 

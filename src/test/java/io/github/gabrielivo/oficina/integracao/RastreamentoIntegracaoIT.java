@@ -33,7 +33,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * e o consumo da mensagem ficam no mesmo trace (traceparent salvo no outbox e propagado nos headers AMQP). A
  * exportação para o Jaeger é validada manualmente com a plataforma local (ver README).
  */
-class RastreamentoIntegracaoTest extends IntegracaoTestBase {
+class RastreamentoIntegracaoIT extends IntegracaoTestBase {
 
     @Autowired
     private MockMvc mockMvc;
