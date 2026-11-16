@@ -1,0 +1,12 @@
+{
+  "messageId": "5e7d0a10-0000-4000-8000-000000000013",
+  "type": "ExecucaoIniciada",
+  "sagaId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "osId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "occurredAt": "2026-11-15T15:20:00Z",
+  "payload": {
+    "tarefaId": "c0a8012e-0006-4000-8000-000000000006",
+    "reservaId": "c0a8012e-0002-4000-8000-000000000002",
+    "iniciadaEm": "2026-11-15T15:20:00Z"
+  }
+}

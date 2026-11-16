@@ -1,0 +1,17 @@
+{
+  "messageId": "5e7d0a10-0000-4000-8000-000000000006",
+  "type": "OrcamentoAprovado",
+  "sagaId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "osId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "occurredAt": "2026-11-15T15:00:00Z",
+  "payload": {
+    "orcamentoId": "b1110000-0004-4000-8000-000000000004",
+    "valorTotal": 590.50,
+    "respondidoPor": {
+      "tipo": "CLIENTE",
+      "identificador": "52998224725"
+    },
+    "observacao": "Pode fazer",
+    "respondidoEm": "2026-11-15T15:00:00Z"
+  }
+}

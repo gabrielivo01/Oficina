@@ -1,0 +1,13 @@
+{
+  "messageId": "5e7d0a10-0000-4000-8000-000000000011",
+  "type": "PagamentoRejeitado",
+  "sagaId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "osId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "occurredAt": "2026-11-15T15:10:00Z",
+  "payload": {
+    "cobrancaId": "b1110000-0005-4000-8000-000000000005",
+    "pagamentoIdExterno": "98765432101",
+    "motivo": "cc_rejected_insufficient_amount",
+    "rejeitadoEm": "2026-11-15T15:10:00Z"
+  }
+}

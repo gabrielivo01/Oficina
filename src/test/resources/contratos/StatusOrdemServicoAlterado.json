@@ -1,0 +1,14 @@
+{
+  "messageId": "5e7d0a10-0000-4000-8000-000000000021",
+  "type": "StatusOrdemServicoAlterado",
+  "sagaId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "osId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "occurredAt": "2026-11-15T13:10:00.123Z",
+  "payload": {
+    "statusAnterior": "RECEBIDA",
+    "statusNovo": "EM_DIAGNOSTICO",
+    "origem": "SAGA",
+    "motivo": "DiagnosticoIniciado",
+    "alteradoEm": "2026-11-15T13:10:00.123Z"
+  }
+}

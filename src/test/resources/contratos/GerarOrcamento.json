@@ -1,0 +1,40 @@
+{
+  "messageId": "5e7d0a10-0000-4000-8000-000000000004",
+  "type": "GerarOrcamento",
+  "sagaId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "osId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "occurredAt": "2026-11-15T14:00:01Z",
+  "payload": {
+    "cliente": {
+      "id": "1a95441a-321b-428e-913a-d44a4033ad81",
+      "nome": "Maria Souza",
+      "cpf": "52998224725",
+      "telefone": "11999999999"
+    },
+    "veiculo": {
+      "placa": "ABC1D23",
+      "marca": "Fiat",
+      "modelo": "Uno",
+      "ano": 2020
+    },
+    "itens": [
+      {
+        "tipo": "SERVICO",
+        "descricao": "Troca de amortecedores dianteiros",
+        "pecaId": null,
+        "quantidade": 1,
+        "valorUnitario": 150.00,
+        "valorTotal": 150.00
+      },
+      {
+        "tipo": "PECA",
+        "descricao": "Amortecedor dianteiro",
+        "pecaId": "c0a8012e-0003-4000-8000-000000000003",
+        "quantidade": 2,
+        "valorUnitario": 220.25,
+        "valorTotal": 440.50
+      }
+    ],
+    "valorTotal": 590.50
+  }
+}

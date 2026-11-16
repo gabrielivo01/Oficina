@@ -1,0 +1,18 @@
+{
+  "messageId": "5e7d0a10-0000-4000-8000-000000000001",
+  "type": "SolicitarDiagnostico",
+  "sagaId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "osId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "occurredAt": "2026-11-15T13:00:00Z",
+  "payload": {
+    "clienteId": "1a95441a-321b-428e-913a-d44a4033ad81",
+    "veiculo": {
+      "id": "99a54e00-6bcf-4075-90c5-1a145d14adb2",
+      "placa": "ABC1D23",
+      "marca": "Fiat",
+      "modelo": "Uno",
+      "ano": 2020
+    },
+    "observacao": "Barulho na suspensão dianteira"
+  }
+}

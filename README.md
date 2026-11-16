@@ -270,6 +270,14 @@ Ordens de Serviço
 - `DELETE /ordens-servico/{id}/itens/{itemId}` - Remover item
 - `POST /ordens-servico/{id}/cancelar` - Cancelar OS (corpo opcional `{"motivo": "..."}`; → `CANCELADA`)
 
+Mensageria (Fase 4)
+- Contratos de todos os comandos e eventos da Saga (envelope, payload, produtor, consumidor, fila e exemplo):
+  `documentacao/contratos_mensagens.md`; exemplos em `src/test/resources/contratos/*.json`, verificados por
+  `ContratosMensagensTest`.
+- Hoje o OS Service publica `StatusOrdemServicoAlterado` (outbox → `oficina.eventos`) a cada transição de status
+  e o consome para notificar o cliente (ADR 0010). Plataforma local (RabbitMQ, Postgres, Jaeger):
+  `docker compose -f ../oficina-infra-k8s/local/docker-compose.yml up -d --wait`.
+
 Exemplo de abertura de OS
 ```json
 {
