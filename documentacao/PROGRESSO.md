@@ -1,16 +1,60 @@
 # Progresso — Fases 5–9 (Saga, qualidade e entregáveis)
 
-Registro de execução de `documentacao/plano_fase4.md`. Lido no início de cada fase; mantido conciso.
+Registro de execução de `documentacao/plano_fase4_implementacao.md` (Plano 1). Lido no início de cada fase; mantido conciso.
 
 ## Status geral
 - **Próxima etapa externa:** deploy automatizado/validação E2E e integração real da Saga; não implementados/executados por dependerem de subir serviços, containers ou testes de integração, expressamente excluídos nesta continuação.
 - **Última fase implementada localmente:** 9 — documentação e artefatos fonte
 - **Atualizado em:** 2026-11-16
-- **Fase 3 em implementação local (sem commit):** criado `oficina-execution-service`, implementadas as etapas 3.1–3.6 e adicionados testes unitários/mockados direcionados. Os testes unitários/mockados selecionados passaram (25 no Execution Service e 54 no OS Service); não foram executados containers, Testcontainers, serviços externos ou testes de integração.
+- **(histórico) Fase 3 em implementação local (sem commit):** criado `oficina-execution-service`, implementadas as etapas 3.1–3.6 e adicionados testes unitários/mockados direcionados. Os testes unitários/mockados selecionados passaram (25 no Execution Service e 54 no OS Service); não foram executados containers, Testcontainers, serviços externos ou testes de integração.
 - O diretório do Execution Service ainda não é um repositório Git separado nem tem remoto. O script de configuração de hooks agora detecta isso e não altera a configuração do repositório pai.
 - **Fase 4 concluída localmente (sem commit):** implementados orçamento, cobrança, gateways fake/Mercado Pago, webhook, mensageria e notificações; o OS Service passou a fornecer e-mail do cliente e deixou de manter o pagamento legado. Testes unitários/mockados e compilação dos dois serviços passaram. Não foram executados containers, Testcontainers, serviços externos ou testes de integração.
 - **Continuação até as fases 6–9 (sem commit):** adicionados testes de domínio/serviços/outbox, workflows de CI e validação estática da infraestrutura, dashboards/alertas/monitores, documentação da Saga, diagramas Mermaid, collection/environment Postman e roteiro de vídeo. Nenhum workflow remoto foi disparado; nenhum serviço, container, cluster ou teste de integração foi iniciado.
 - **Cobertura unitária após `verify` filtrado:** OS 81,37% (1385/1702 linhas), Execution 80,78% (643/796) e Billing 80,40% (759/944). As três suítes passaram sem falhas.
+
+## Complemento de 2026-11-16 (lacunas do Plano 1)
+Revisão do código contra o plano encontrou lacunas, agora implementadas (sem commit; mensagens propostas por etapa):
+- **2.7 / seção 3:** perfil Maven `integracao` (failsafe) nos 3 repos; os testes com Testcontainers do `oficina`
+  viraram `*IT` (`MensageriaIntegracaoIT`, `MigracoesPostgresIT`, `RastreamentoIntegracaoIT`). `./mvnw verify` puro
+  não exige Docker; CIs rodam `verify` + job `verify -Pintegracao`. ADR 0013 (estratégia de testes em dois planos;
+  o 0010 previsto no plano já estava em uso).
+- **5.4:** Saga em memória (`src/test/java/.../saga/memoria`): repositórios em memória, `BarramentoEmMemoria`
+  (porta `PublicadorMensagens`) e participantes falsos de Execution/Billing respondendo com os JSON do catálogo;
+  `SagaEmMemoriaTest` cobre caminho feliz, orçamento recusado, pagamento rejeitado, pagamento expirado, execução
+  recusada, eventos duplicados e cancelamento manual.
+- **6.1:** BDD reescrito sobre a Saga em memória; steps falam com a interface `ComunicacaoSaga` (Plano 2 acrescenta a
+  implementação contra os serviços reais). 4 cenários passando.
+- **Execution (3.1):** teste de contexto (H2 modo PostgreSQL + Flyway), `@DataJpaTest` dos repositórios com consulta
+  própria (inclui `@Version`), teste unitário do listener. O índice parcial do outbox (sem suporte no H2) saiu da V1
+  para `db/vendor/{postgresql,h2}/V3` — a V1 nunca foi aplicada (serviço ainda não implantado).
+- **Billing (4.1/4.4):** ADR 0001 no repo (atomicidade e índices), teste de contrato (comandos consumidos pelo
+  processador real; eventos produzidos pelos serviços reais comparados aos exemplos), adapter Mercado Pago contra
+  WireMock HTTPS, teste de contexto e do listener.
+- **Bug encontrado pelo teste de contexto do Billing:** no Spring Boot 4 `spring.data.mongodb.uri` não é mais lido;
+  corrigido para `spring.mongodb.uri` (aceitando `SPRING_DATA_MONGODB_URI` por compatibilidade), com teste de regressão.
+- **Contrato:** `OrcamentoRecusado` do Billing já enviava `valorTotal`; catálogo e exemplos atualizados (campo opcional).
+- **7.1/7.3:** `cd.yml` nos 3 serviços (GHCR → kind → deploy → rollout → health → smoke E2E → logs em falha), overlay
+  `k8s/overlays/local` do `oficina`, `oficina-infra-k8s/scripts/deploy_servicos_kind.sh` e `smoke_test_e2e.sh`
+  (escritos e validados com `bash -n`/parser YAML; **não executados**).
+- **Git:** `oficina-execution-service` e `oficina-billing-service` agora são repositórios (`main`, hooks configurados), sem commit.
+- **Validação:** `./mvnw -q clean verify` sem Docker passou nos 3 repos (heap limitado a 700 MB por causa da memória do
+  WSL). Cobertura LINE: OS 88,5%, Execution 86,8%, Billing 84,6%. `kubectl kustomize` dos overlays `local` e da plataforma OK.
+
+## Itens para o Plano 2 (consolidado)
+1. Rodar `./mvnw verify -Pintegracao` nos 3 repos (Testcontainers; Execution e Billing ainda sem `*IT` próprios:
+   escrever ITs de PostgreSQL/Flyway real, MongoDB replica set com transação e RabbitMQ).
+2. Subir Compose e kind (`plataforma_up.sh`), rodar `deploy_servicos_kind.sh` e `smoke_test_e2e.sh`; ajustar o que falhar.
+3. Primeira execução real dos `cd.yml` (precisa de `CROSS_REPO_TOKEN` se os repos/imagens forem privados; imagens
+   `:latest` dos outros serviços precisam existir no GHCR).
+4. Implementação de `ComunicacaoSaga` contra os serviços reais e BDD rodando contra o kind.
+5. Verificar traces ponta a ponta no Jaeger (HTTP → outbox → RabbitMQ → consumidor nos 3 serviços).
+6. Mercado Pago sandbox real (Checkout Pro, webhook com assinatura via túnel, estorno).
+7. SonarCloud: criar organização/projetos, `SONAR_TOKEN`, Quality Gate e badges.
+8. `scripts/proteger_branch_main.sh` (executar com permissão de admin) e repositórios remotos para Execution e Billing.
+9. Ferramentas estáticas não disponíveis localmente: `actionlint`, `shellcheck`, `kubeconform`, `promtool` (rodam no
+   `validate.yml` da infra ou precisam ser rodadas manualmente nos workflows dos serviços).
+10. Dívida observada: o Billing trata JSON inválido como `IllegalArgumentException` (vai para DLQ após as retentativas,
+    em vez de rejeitar na hora como o Execution faz com `AmqpRejectAndDontRequeueException`).
 
 ## Fases concluídas
 
