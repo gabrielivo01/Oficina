@@ -6,6 +6,7 @@
   "occurredAt": "2026-11-15T15:00:00Z",
   "payload": {
     "orcamentoId": "b1110000-0004-4000-8000-000000000004",
+    "valorTotal": 590.50,
     "respondidoPor": {
       "tipo": "USUARIO",
       "identificador": "atendente"

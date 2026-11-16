@@ -474,6 +474,7 @@ Billing Service → OS Service (passo 5b). O orquestrador compensa com `LiberarR
 | Campo | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
 | `orcamentoId` | UUID | sim | Orçamento recusado. |
+| `valorTotal` | decimal | não | Valor do orçamento recusado (informativo; a Saga não usa). |
 | `respondidoPor.tipo`, `respondidoPor.identificador` | — | sim | Como em `OrcamentoAprovado`. |
 | `observacao` | string | não | Motivo informado. |
 | `respondidoEm` | ISO-8601 | sim | Momento da resposta. |
@@ -487,6 +488,7 @@ Billing Service → OS Service (passo 5b). O orquestrador compensa com `LiberarR
   "occurredAt": "2026-11-15T15:00:00Z",
   "payload": {
     "orcamentoId": "b1110000-0004-4000-8000-000000000004",
+    "valorTotal": 590.50,
     "respondidoPor": {
       "tipo": "USUARIO",
       "identificador": "atendente"
