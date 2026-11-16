@@ -2,6 +2,8 @@ package io.github.gabrielivo.oficina.integracao;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.gabrielivo.oficina.application.mensageria.EnvelopeMensagem;
+import io.github.gabrielivo.oficina.application.mensageria.ProcessadorMensagensService;
 import io.github.gabrielivo.oficina.application.ordemServico.AbrirOrdemServicoCommand;
 import io.github.gabrielivo.oficina.application.ordemServico.ListarOrdensServicoCommand;
 import io.github.gabrielivo.oficina.application.ordemServico.OrdemServicoService;
@@ -11,11 +13,14 @@ import io.github.gabrielivo.oficina.domain.ordemServico.OrdemServico;
 import io.github.gabrielivo.oficina.domain.ordemServico.StatusOrdemServico;
 import io.github.gabrielivo.oficina.domain.veiculo.Veiculo;
 import io.github.gabrielivo.oficina.domain.veiculo.VeiculoRepository;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import tools.jackson.databind.node.JsonNodeFactory;
 
 /**
  * Aceite da etapa 2.1: a aplicação sobe num PostgreSQL vazio só com as migrations do Flyway e o Hibernate valida o
@@ -36,6 +41,9 @@ class MigracoesPostgresIT extends IntegracaoTestBase {
     @Autowired
     private OrdemServicoService ordemServicoService;
 
+    @Autowired
+    private ProcessadorMensagensService processadorMensagens;
+
     @Test
     void deveCriarSchemaSoComAsMigrationsDoFlyway() {
         List<String> versoes = jdbcTemplate.queryForList(
@@ -51,7 +59,8 @@ class MigracoesPostgresIT extends IntegracaoTestBase {
 
     @Test
     void devePersistirEntidadeNoSchemaMigrado() {
-        Cliente salvo = clienteRepository.save(new Cliente("52998224725", "Cliente Flyway", null, null));
+        Cliente salvo =
+                clienteRepository.save(new Cliente("52998224725", "Cliente Flyway", null, "flyway@example.com", null));
 
         assertThat(clienteRepository.findByCpf("52998224725"))
                 .get()
@@ -61,13 +70,24 @@ class MigracoesPostgresIT extends IntegracaoTestBase {
 
     @Test
     void deveCancelarRegistrarHistoricoEListarPaginadoNoPostgres() {
-        Cliente cliente = clienteRepository.save(new Cliente("11144477735", "Cliente Saga", null, null));
+        Cliente cliente =
+                clienteRepository.save(new Cliente("11144477735", "Cliente Saga", null, "saga@example.com", null));
         Veiculo veiculo = veiculoRepository.save(new Veiculo(cliente, "PGS1234", "Fiat", "Uno", 2020));
         OrdemServico aberta = ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
         OrdemServico cancelada =
                 ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
 
         ordemServicoService.cancelar(cancelada.getId(), "Cliente desistiu");
+        // A Saga só cancela a OS depois que o Execution confirma a liberação da reserva
+        processadorMensagens.processar(new EnvelopeMensagem(
+                UUID.randomUUID().toString(),
+                "ReservaPecasLiberada",
+                cancelada.getId(),
+                cancelada.getId(),
+                Instant.now(),
+                JsonNodeFactory.instance
+                        .objectNode()
+                        .put("liberadaEm", Instant.now().toString())));
 
         assertThat(ordemServicoService.listarHistorico(cancelada.getId()))
                 .extracting(h -> h.getStatusNovo())
