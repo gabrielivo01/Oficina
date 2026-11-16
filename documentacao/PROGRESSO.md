@@ -3,8 +3,11 @@
 Registro de execução de `documentacao/plano_fase4_implementacao.md` (Plano 1). Lido no início de cada fase; mantido conciso.
 
 ## Status geral
-- **Próxima etapa externa:** deploy automatizado/validação E2E e integração real da Saga; não implementados/executados por dependerem de subir serviços, containers ou testes de integração, expressamente excluídos nesta continuação.
-- **Última fase implementada localmente:** 9 — documentação e artefatos fonte
+- **Situação:** Plano 1 concluído (tags `fase-0` a `fase-9`). Os 4 repositórios estão no GitHub e os pipelines
+  rodaram de verdade: CI verde nos 3 serviços (incluindo testes de integração com Testcontainers e Quality Gate do
+  SonarCloud) e CD verde nos 3 (deploy no kind e smoke test E2E da Saga até `FINALIZADA`/`CONCLUIDA`).
+- **Branch `main` protegida** nos 3 serviços (PR obrigatório, CI obrigatório, sem push direto): mudanças agora
+  entram por pull request.
 - **Atualizado em:** 2026-11-16
 - **(histórico) Fase 3 em implementação local (sem commit):** criado `oficina-execution-service`, implementadas as etapas 3.1–3.6 e adicionados testes unitários/mockados direcionados. Os testes unitários/mockados selecionados passaram (25 no Execution Service e 54 no OS Service); não foram executados containers, Testcontainers, serviços externos ou testes de integração.
 - O diretório do Execution Service ainda não é um repositório Git separado nem tem remoto. O script de configuração de hooks agora detecta isso e não altera a configuração do repositório pai.
@@ -40,21 +43,32 @@ Revisão do código contra o plano encontrou lacunas, agora implementadas (sem c
 - **Validação:** `./mvnw -q clean verify` sem Docker passou nos 3 repos (heap limitado a 700 MB por causa da memória do
   WSL). Cobertura LINE: OS 88,5%, Execution 86,8%, Billing 84,6%. `kubectl kustomize` dos overlays `local` e da plataforma OK.
 
+## Validação real (2026-11-16)
+- **Publicação:** `Oficina` e `oficina-infra-k8s` atualizados; `oficina-execution-service` e `oficina-billing-service`
+  criados no GitHub (públicos). Imagens dos 3 serviços públicas no GHCR.
+- **SonarCloud:** organização `gabrielivo01` e projetos criados, `SONAR_TOKEN` nos 3 repos. Quality Gate OK nos 3
+  depois de: actions de terceiros fixadas por SHA, `curl` com HTTPS obrigatório, secrets fora de blocos `run`, CSRF
+  desabilitado justificado (APIs stateless com JWT) e exclusões de cobertura iguais às do JaCoCo. Cobertura no
+  SonarCloud (linhas + condições): OS 83,0%, Execution 82,2%, Billing ≈ 83% após novos testes (era 78,7%).
+- **Testes de integração do OS:** `MigracoesPostgresIT` e `RastreamentoIntegracaoIT` alinhados à Saga (cliente com
+  e-mail, cancelamento confirmado por `ReservaPecasLiberada`, trace medido em `POST /entregar`); verdes no CI.
+- **CD:** problemas encontrados só no deploy real e corrigidos: Secret errado nas credenciais do MongoDB do Billing e
+  health de e-mail derrubando o `/actuator/health` (MailHog não existe no kind); smoke test passou a usar o
+  readiness. Saga validada no Kubernetes com os 3 serviços, RabbitMQ, PostgreSQL e MongoDB (replica set).
+- **Proteção de branch:** `scripts/proteger_branch_main.sh` corrigido (nomes reais das checagens e aprovações
+  configuráveis, padrão 0 por haver um único mantenedor) e aplicado.
+
 ## Itens para o Plano 2 (consolidado)
-1. Rodar `./mvnw verify -Pintegracao` nos 3 repos (Testcontainers; Execution e Billing ainda sem `*IT` próprios:
-   escrever ITs de PostgreSQL/Flyway real, MongoDB replica set com transação e RabbitMQ).
-2. Subir Compose e kind (`plataforma_up.sh`), rodar `deploy_servicos_kind.sh` e `smoke_test_e2e.sh`; ajustar o que falhar.
-3. Primeira execução real dos `cd.yml` (precisa de `CROSS_REPO_TOKEN` se os repos/imagens forem privados; imagens
-   `:latest` dos outros serviços precisam existir no GHCR).
-4. Implementação de `ComunicacaoSaga` contra os serviços reais e BDD rodando contra o kind.
-5. Verificar traces ponta a ponta no Jaeger (HTTP → outbox → RabbitMQ → consumidor nos 3 serviços).
-6. Mercado Pago sandbox real (Checkout Pro, webhook com assinatura via túnel, estorno).
-7. SonarCloud: criar organização/projetos, `SONAR_TOKEN`, Quality Gate e badges.
-8. `scripts/proteger_branch_main.sh` (executar com permissão de admin) e repositórios remotos para Execution e Billing.
-9. Ferramentas estáticas não disponíveis localmente: `actionlint`, `shellcheck`, `kubeconform`, `promtool` (rodam no
-   `validate.yml` da infra ou precisam ser rodadas manualmente nos workflows dos serviços).
-10. Dívida observada: o Billing trata JSON inválido como `IllegalArgumentException` (vai para DLQ após as retentativas,
-    em vez de rejeitar na hora como o Execution faz com `AmqpRejectAndDontRequeueException`).
+1. Testes `*IT` próprios no Execution (PostgreSQL/Flyway real, RabbitMQ) e no Billing (MongoDB replica set com
+   transação, RabbitMQ); o perfil `integracao` já existe e roda no CI.
+2. Implementação de `ComunicacaoSaga` contra os serviços reais e BDD rodando contra o kind (hoje o smoke test cobre
+   o caminho feliz no Kubernetes; as compensações são cobertas em memória).
+3. Verificar traces ponta a ponta no Jaeger (HTTP → outbox → RabbitMQ → consumidor nos 3 serviços).
+4. Mercado Pago sandbox real (Checkout Pro, webhook com assinatura via túnel, estorno).
+5. Ferramentas estáticas: `actionlint`, `kubeconform` e `promtool` nos workflows dos serviços (a infra já roda
+   shellcheck/kustomize/kubeconform no `validate.yml`).
+6. Dívida: o Billing trata JSON inválido como `IllegalArgumentException` (vai para a DLQ após as retentativas, em vez
+   de rejeitar na hora como o Execution faz com `AmqpRejectAndDontRequeueException`).
 
 ## Fases concluídas
 
