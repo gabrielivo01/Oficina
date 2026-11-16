@@ -1,39 +1,45 @@
 # language: pt
 Funcionalidade: Orquestração da Saga de ordem de serviço
-  A Saga coordena diagnóstico, orçamento, cobrança, execução e compensações.
+  A Saga do OS Service coordena diagnóstico, orçamento, cobrança e execução trocando comandos e eventos
+  com o Execution Service e o Billing Service. Quando uma etapa falha, ela dispara as compensações
+  e a OS termina cancelada sem deixar peças reservadas nem pagamento retido.
 
   Cenário: Fluxo completo até a entrega
-    Dado que uma OS foi aberta
-    Quando o diagnóstico é concluído e o orçamento é gerado
-    E o orçamento é aprovado
-    E a cobrança é criada, paga e a execução é finalizada
+    Dado que o cliente abriu uma OS
+    Quando o mecânico conclui o diagnóstico
+    E o cliente aprova o orçamento
+    E o cliente paga a cobrança
+    E o mecânico finaliza a execução
     E a OS é entregue ao cliente
     Então a OS fica no status "ENTREGUE"
     E a Saga fica na situação "CONCLUIDA"
 
   Cenário: Orçamento recusado libera a reserva antes do cancelamento
-    Dado que uma OS foi aberta
-    Quando o diagnóstico é concluído e o orçamento é gerado
-    E o orçamento é recusado
-    E a reserva de peças é liberada
-    Então a OS fica no status "CANCELADA"
+    Dado que o cliente abriu uma OS
+    Quando o mecânico conclui o diagnóstico
+    E o cliente recusa o orçamento
+    Então o Execution Service recebe o comando "LiberarReservaPecas"
+    E a OS fica no status "CANCELADA"
     E a Saga fica na situação "COMPENSADA"
 
-  Cenário: Pagamento expirado cancela a cobrança e libera a reserva
-    Dado que uma OS foi aberta
-    Quando a cobrança aguarda pagamento
-    E o prazo do pagamento expira
-    E a cobrança é cancelada
-    E a reserva de peças é liberada
-    Então a OS fica no status "CANCELADA"
+  Cenário: Pagamento não confirmado no prazo cancela a cobrança e libera a reserva
+    Dado que as cobranças vencem assim que são criadas
+    E que o cliente abriu uma OS
+    Quando o mecânico conclui o diagnóstico
+    E o cliente aprova o orçamento
+    E o prazo de pagamento expira sem confirmação
+    Então o Billing Service recebe o comando "CancelarCobranca"
+    E o Execution Service recebe o comando "LiberarReservaPecas"
+    E a OS fica no status "CANCELADA"
     E a Saga fica na situação "COMPENSADA"
 
   Cenário: Execução recusada estorna o pagamento e libera a reserva
-    Dado que uma OS foi aberta
-    Quando a cobrança aguarda pagamento
-    E o pagamento é confirmado
-    E a execução é recusada
-    E o pagamento é estornado
-    E a reserva de peças é liberada
-    Então a OS fica no status "CANCELADA"
+    Dado que o Execution Service recusa o início da execução
+    E que o cliente abriu uma OS
+    Quando o mecânico conclui o diagnóstico
+    E o cliente aprova o orçamento
+    E o cliente paga a cobrança
+    Então o Billing Service recebe o comando "EstornarPagamento"
+    E o Execution Service recebe o comando "LiberarReservaPecas"
+    E a OS fica no status "CANCELADA"
     E a Saga fica na situação "COMPENSADA"
