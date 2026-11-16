@@ -5,7 +5,11 @@ Registro de execução de `documentacao/plano_fase4.md`. Lido no início de cada
 ## Status geral
 - **Fase atual:** 2 — Preparar o OS Service (`oficina`)
 - **Última fase concluída:** 1 — Plataforma local
-- **Atualizado em:** 2026-11-15 20:40
+- **Atualizado em:** 2026-11-15 22:20
+- **Fase 2 em validação (sem tag):** etapas 2.1–2.6 commitadas (`d75e862`, `96db7a3`, `a8bff07`, `d844b4d`,
+  `a3ca139`, `9a7fa07`); mensagens sem atribuição a IA; árvore limpa. Na retomada: confirmar `./mvnw -q verify`
+  (última execução imprimiu 3 linhas com "ERROR"/"Tests run" — conferir se são só logs), rodar o validador
+  independente e fechar a fase (tag `fase-2`).
 
 ## Fases concluídas
 
