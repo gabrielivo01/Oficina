@@ -269,7 +269,9 @@ A estratégia de testes está no [ADR 0013](./documentacao/adrs/0013-estrategia-
 
 ## Demonstração e qualidade
 
-- Collection e environment Postman: [`documentacao/postman/`](./documentacao/postman/).
+- Collection e environment Postman: [`documentacao/postman/`](./documentacao/postman/). O environment `local` espera o
+  OS Service em `:8080`, o Execution em `:8081` (rodar com `SERVER_PORT=8081`) e o Billing em `:8082` (porta padrão).
+  O fluxo segue a ordem das pastas; após o pagamento, o reparo já começa `EM_ANDAMENTO` no Execution.
 - Roteiro de apresentação (até 15 minutos): [`documentacao/roteiro_video.md`](./documentacao/roteiro_video.md).
 
 ### CI/CD (Fase 4)
