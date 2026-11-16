@@ -1,0 +1,117 @@
+name: CD
+
+# Fase 4 (etapa 7.1): a cada push na branch padrão publica a imagem deste serviço no GHCR e valida a implantação
+# dos 3 serviços num cluster kind efêmero do runner (plataforma do oficina-infra-k8s), com smoke test E2E da Saga.
+# Os outros dois serviços usam a imagem :latest publicada pelos respectivos CDs.
+# Repositórios privados: defina o secret CROSS_REPO_TOKEN (PAT com leitura dos repos e de packages); sem ele usa o
+# GITHUB_TOKEN, suficiente quando os repositórios e as imagens são públicos.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cd-kind-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  deploy-kind:
+    name: Imagem + deploy no kind + smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OWNER: ${{ github.repository_owner }}
+      KIND_VERSION: v0.27.0
+
+    steps:
+      - name: Checkout deste serviço
+        uses: actions/checkout@v4
+        with:
+          path: oficina
+
+      - name: Checkout dos demais repositórios
+        run: |
+          set -euo pipefail
+          token="${{ secrets.CROSS_REPO_TOKEN || github.token }}"
+          for repo in oficina-infra-k8s oficina-execution-service oficina-billing-service; do
+            git clone --depth 1 "https://x-access-token:${token}@github.com/${OWNER}/${repo}.git" "$repo"
+          done
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: oficina/pom.xml
+
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.CROSS_REPO_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Build e push da imagem
+        working-directory: oficina
+        run: |
+          set -euo pipefail
+          owner="$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')"
+          image="ghcr.io/${owner}/oficina"
+          # Dockerfile multi-stage: o build Maven acontece dentro da imagem
+          docker build -t "${image}:${GITHUB_SHA}" -t "${image}:latest" .
+          docker push "${image}:${GITHUB_SHA}"
+          docker push "${image}:latest"
+          echo "IMAGE_OWNER=${owner}" >> "$GITHUB_ENV"
+          echo "IMAGE_OFICINA=${image}:${GITHUB_SHA}" >> "$GITHUB_ENV"
+
+      - name: Instalar kind
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSLo "$HOME/.local/bin/kind" "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+          chmod +x "$HOME/.local/bin/kind"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/kind" version
+
+      - name: Subir a plataforma (kind, ingress, RabbitMQ, Jaeger, OTel, Prometheus/Grafana)
+        run: bash oficina-infra-k8s/scripts/plataforma_up.sh
+
+      - name: Deploy dos 3 serviços
+        env:
+          OFICINA_DIR: ${{ github.workspace }}/oficina
+          EXECUTION_DIR: ${{ github.workspace }}/oficina-execution-service
+          BILLING_DIR: ${{ github.workspace }}/oficina-billing-service
+        run: |
+          set -euo pipefail
+          export IMAGE_OFICINA="${IMAGE_OFICINA:-ghcr.io/${IMAGE_OWNER}/oficina:latest}"
+          export IMAGE_EXECUTION="${IMAGE_EXECUTION:-ghcr.io/${IMAGE_OWNER}/oficina-execution-service:latest}"
+          export IMAGE_BILLING="${IMAGE_BILLING:-ghcr.io/${IMAGE_OWNER}/oficina-billing-service:latest}"
+          bash oficina-infra-k8s/scripts/deploy_servicos_kind.sh
+
+      - name: Smoke test E2E da Saga
+        run: bash oficina-infra-k8s/scripts/smoke_test_e2e.sh
+
+      - name: Coletar estado e logs dos pods
+        if: failure()
+        run: |
+          mkdir -p diagnostico
+          kubectl get pods -A -o wide > diagnostico/pods.txt || true
+          kubectl get events -A --sort-by=.lastTimestamp > diagnostico/events.txt || true
+          for ns in oficina plataforma; do
+            for pod in $(kubectl -n "$ns" get pods -o name 2>/dev/null); do
+              kubectl -n "$ns" logs "$pod" --all-containers --tail=500 > "diagnostico/${ns}-${pod#pod/}.log" 2>&1 || true
+            done
+          done
+
+      - name: Publicar diagnóstico
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostico-kind
+          path: diagnostico/
+          if-no-files-found: ignore

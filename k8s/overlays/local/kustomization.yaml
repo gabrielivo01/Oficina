@@ -1,0 +1,13 @@
+# Overlay do cluster kind local / CD (Fase 4): Postgres próprio da base, RabbitMQ e OTel Collector da plataforma
+# (oficina-infra-k8s, namespace "plataforma"). Imagem publicada no GHCR pelo cd.yml.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: oficina
+resources:
+  - ../../base
+patches:
+  - path: configmap-patch.yaml
+images:
+  - name: oficina
+    newName: ghcr.io/gabrielivo01/oficina
+    newTag: latest
