@@ -35,13 +35,15 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         if (!securityEnabled) {
             // Segurança desabilitada: permitir tudo
-            http.csrf(csrf -> csrf.disable())
+            // CSRF não se aplica: autenticação só por JWT no header Authorization, sem cookie de sessão.
+            http.csrf(csrf -> csrf.disable()) // NOSONAR: API stateless (JWT)
                     .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
             return http.build();
         }
 
         // Segurança habilitada: configuração normal
-        http.csrf(csrf -> csrf.disable())
+        // CSRF não se aplica: autenticação só por JWT no header Authorization, sem cookie de sessão.
+        http.csrf(csrf -> csrf.disable()) // NOSONAR: API stateless (JWT)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.requestMatchers(
                                 "/",
