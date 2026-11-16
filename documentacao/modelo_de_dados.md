@@ -1,9 +1,8 @@
 # Modelo de Dados
 
-O schema é versionado pelo **Flyway** em `src/main/resources/db/migration` (o Hibernate só valida,
-`ddl-auto=validate`). `V1__baseline.sql` reproduz o schema que o Hibernate criava no PostgreSQL até a Fase 3,
-com os mesmos nomes de constraint; bancos que já existiam recebem baseline na V1 sem reexecutá-la. Toda mudança
-de tabela/coluna é uma migration nova e é refletida neste documento.
+O schema do OS Service é versionado pelo **Flyway** em `src/main/resources/db/migration` (o Hibernate só valida,
+`ddl-auto=validate`). `V1__baseline.sql` reproduz o schema legado; a V5 remove o catálogo/estoque migrado ao
+Execution Service e preserva os itens antigos como snapshots. Toda mudança de tabela/coluna é uma migration nova.
 
 ```dbml
 Table usuario {
@@ -18,6 +17,7 @@ Table cliente {
   cpf char(11) [unique, not null]
   nome varchar(150) [not null]
   telefone varchar(20)
+  email varchar(254) // obrigatório no cadastro via API; usado pela notificação do Billing
   endereco_id varchar(36) [ref: > endereco.id]
   status varchar(20) [not null, default: 'ATIVO'] // ATIVO, INATIVO — consultado pelo lambda de autenticação por CPF
   criado_em timestamp
@@ -44,17 +44,6 @@ Table veiculo {
   marca varchar(100) [not null]
   modelo varchar(100) [not null]
   ano integer
-  criado_em timestamp
-  atualizado_em timestamp
-}
-
-Table peca {
-  id varchar(36) [primary key] // UUID.toString()
-  nome varchar(150) [not null]
-  descricao text
-  quantidade_estoque integer [not null, default: 0]
-  estoque_minimo integer [not null, default: 0]
-  preco decimal(10,2)
   criado_em timestamp
   atualizado_em timestamp
 }
@@ -115,20 +104,14 @@ Table inbox { // V3: idempotência dos consumidores (ADR 0009)
 Table item_ordem_servico {
   id varchar(36) [primary key] // UUID.toString()
   ordem_servico_id varchar(36) [not null, ref: > ordem_servico.id]
-  peca_id varchar(36) [ref: > peca.id]
+  peca_id varchar(36) // identificador externo no Execution Service; sem FK entre bancos
+  nome_peca varchar(150) // nome preservado no snapshot
   descricao varchar(150) [not null]
   tipo varchar(10) [not null] // SERVICO, PECA
   valor decimal(10,2) [not null]
   quantidade integer
 }
 
-Table pagamento {
-  id varchar(36) [primary key] // UUID.toString()
-  ordem_servico_id varchar(36) [not null, ref: > ordem_servico.id]
-  valor decimal(10,2) [not null]
-  forma_pagamento varchar(30) // PIX, DINHEIRO, CARTAO
-  criado_em timestamp
-}
 ```
 
 O bloco acima está em [DBML](https://dbml.dbdiagram.io/) — cole em
@@ -148,6 +131,7 @@ erDiagram
         char cpf UK
         varchar nome
         varchar telefone
+        varchar email
         varchar endereco_id FK
         varchar status
         timestamp criado_em
@@ -171,14 +155,6 @@ erDiagram
         varchar modelo
         integer ano
     }
-    PECA {
-        varchar id PK
-        varchar nome
-        text descricao
-        integer quantidade_estoque
-        integer estoque_minimo
-        decimal preco
-    }
     ORDEM_SERVICO {
         varchar id PK
         varchar cliente_id FK
@@ -200,38 +176,29 @@ erDiagram
     ITEM_ORDEM_SERVICO {
         varchar id PK
         varchar ordem_servico_id FK
-        varchar peca_id FK
+        varchar peca_id
+        varchar nome_peca
         varchar descricao
         varchar tipo
         decimal valor
         integer quantidade
     }
-    PAGAMENTO {
-        varchar id PK
-        varchar ordem_servico_id FK
-        decimal valor
-        varchar forma_pagamento
-    }
-
     CLIENTE ||--o| ENDERECO : "mora em"
     CLIENTE ||--o{ VEICULO : "possui"
     CLIENTE ||--o{ ORDEM_SERVICO : "solicita"
     VEICULO ||--o{ ORDEM_SERVICO : "é atendido em"
     ORDEM_SERVICO ||--o{ ITEM_ORDEM_SERVICO : "contém"
     ORDEM_SERVICO ||--|{ HISTORICO_STATUS_OS : "registra mudanças de status"
-    PECA ||--o{ ITEM_ORDEM_SERVICO : "referenciada por (tipo=PECA)"
-    ORDEM_SERVICO ||--o| PAGAMENTO : "é paga por"
 ```
 
-## Justificativa da escolha do banco (PostgreSQL/RDS)
+## Justificativa da escolha do banco (PostgreSQL)
 
 Ver `documentacao/rfcs/0002-escolha-do-banco-gerenciado.md` para a justificativa
 formal completa (tipos de dados usados no schema, integridade referencial sob
-concorrência, custo/maturidade no RDS, alternativas descartadas). Resumo: o
-modelo é fortemente relacional — abrir uma OS com item do tipo `PECA` decrementa
-estoque na mesma transação, pagamento é 1:1 com OS, e há múltiplas constraints
-`UNIQUE`/`NOT NULL` que dependem de integridade referencial real — PostgreSQL
-atende isso nativamente sem desnormalização.
+concorrência, custo/maturidade no RDS, alternativas descartadas). Resumo: o modelo de clientes, veículos, OS e histórico é relacional e
+depende de constraints `UNIQUE`/`NOT NULL` e integridade referencial. O catálogo e
+estoque pertencem ao banco PostgreSQL próprio do Execution Service; a OS conserva
+somente um snapshot dos itens, sem acesso ao banco do outro serviço.
 
 ## Relacionamentos entre os módulos
 
@@ -244,11 +211,9 @@ atende isso nativamente sem desnormalização.
 - **`cliente`/`veiculo` ↔ `ordem_servico`** (1:N cada): toda OS pertence a
   exatamente um cliente e um veículo, ambos obrigatórios na criação
   (`OrdemServicoService.abrir` busca os dois antes de instanciar a OS).
-- **`ordem_servico` ↔ `item_ordem_servico`** (1:N): itens são o único jeito de
-  compor o `valor_total` da OS (`OrdemServico.recalcularTotal`); um item do
-  tipo `SERVICO` não referencia peça, um item do tipo `PECA` referencia
-  exatamente uma (`ItemOrdemServico`/`domain/ordemServico/AdicionarItemCommand`
-  validam essa regra).
+- **`ordem_servico` ↔ `item_ordem_servico`** (1:N): o Execution Service publica os itens
+  concluídos do diagnóstico; o OS Service grava um snapshot imutável que compõe o
+  `valor_total`. Para itens `PECA`, `peca_id` é um identificador externo sem FK.
 - **`ordem_servico` ↔ `historico_status_os`** (1:N, ao menos 1): gravado em cascata pelo agregado
   `OrdemServico` (todo `alterarStatus` adiciona uma linha); nunca alterado depois de gravado. OS anteriores à
   V2 receberam uma linha inicial com o status vigente (origem `SISTEMA`).
@@ -256,13 +221,8 @@ atende isso nativamente sem desnormalização.
   mesma transação da mudança de estado (hoje: cada transição de status da OS gera um
   `StatusOrdemServicoAlterado`) e é publicada depois do commit; o inbox guarda o `messageId` de cada mensagem
   consumida, na mesma transação do processamento. Limpeza periódica das linhas antigas: pendente (ADR 0009).
-- **`peca` ↔ `item_ordem_servico`** (1:N, opcional): só itens do tipo `PECA`
-  têm `peca_id` preenchido; adicionar um item desses decrementa
-  `peca.quantidade_estoque` (`PecaService`/`OrdemServicoService`), removê-lo
-  ou cancelar a OS repõe o estoque.
-- **`ordem_servico` ↔ `pagamento`** (1:0..1): pagamento só é permitido quando
-  a OS está `FINALIZADA` ou `ENTREGUE` (regra em `OrdemServicoService`), e uma
-  OS tem no máximo um pagamento associado.
+- **Cobrança e pagamento:** pertencem ao Billing Service e ao MongoDB próprio;
+  o OS Service recebe os respectivos eventos pela Saga e não mantém tabela de pagamento.
 - **`usuario`**: isolado do restante do modelo — não referencia nem é
   referenciado por `cliente`/`ordem_servico`/etc. Representa login de
   staff/admin (ver `domain/usuario/`), um modelo de credencial

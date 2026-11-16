@@ -14,7 +14,6 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("Oficina REST API")
                         .version("v1")
-                        .description(
-                                "API RESTful de gerenciamento de clientes, veículos, ordens de serviço e pagamentos."));
+                        .description("API RESTful de gerenciamento de clientes, veículos e ordens de serviço."));
     }
 }

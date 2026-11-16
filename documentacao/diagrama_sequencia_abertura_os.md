@@ -1,9 +1,10 @@
 # Diagrama de Sequência — Abertura de Ordem de Serviço
 
 Fluxo de `POST /ordens-servico`, a partir de um cliente já autenticado (ver
-`documentacao/diagrama_sequencia_auth.md`). Cobre o caminho feliz com um item
-do tipo `PECA` (que reduz estoque) e a métrica de negócio registrada na
-abertura.
+`documentacao/diagrama_sequencia_auth.md`). O OS Service recebe somente cliente
+e veículo; o diagnóstico, catálogo e reserva de estoque pertencem ao Execution
+Service. A publicação do comando `SolicitarDiagnostico` e o consumo de
+`DiagnosticoConcluido` serão conectados na Fase 5, quando a Saga for ativada.
 
 ```mermaid
 sequenceDiagram
@@ -13,12 +14,11 @@ sequenceDiagram
     participant Svc as OrdemServicoService
     participant ClienteRepo as ClienteRepository
     participant VeiculoRepo as VeiculoRepository
-    participant PecaRepo as PecaRepository
     participant OSRepo as OrdemServicoRepository
     participant Metrics as MeterRegistry
     participant DB as PostgreSQL
 
-    Cliente ->> GW: POST /ordens-servico\nAuthorization: Bearer <token>\n{clienteId, veiculoId, itens: [...]}
+    Cliente ->> GW: POST /ordens-servico\nAuthorization: Bearer <token>\n{clienteId, veiculoId}
     GW ->> Ctrl: proxy (JwtAuthFilter já autenticou)
     Ctrl ->> Svc: abrir(AbrirOrdemServicoCommand)
 
@@ -36,20 +36,7 @@ sequenceDiagram
     Svc ->> OSRepo: save(os)
     OSRepo ->> DB: INSERT INTO ordem_servico ...
 
-    loop para cada item do comando
-        alt item do tipo PECA
-            Svc ->> PecaRepo: findById(pecaId)
-            PecaRepo -->> Svc: peca
-            Svc ->> Svc: peca.reduzirEstoque(quantidade)
-            Svc ->> PecaRepo: save(peca)
-        end
-        Svc ->> Svc: os.adicionarItem(item)\n(recalcula valorTotal)
-    end
-
     Svc ->> Metrics: counter("oficina.ordens_servico.abertas").increment()
-    Svc ->> OSRepo: save(os)
-    OSRepo ->> DB: UPDATE ordem_servico ...\nINSERT INTO item_ordem_servico ...
-    OSRepo -->> Svc: osSalva
     Svc -->> Ctrl: osSalva
     Ctrl -->> GW: 201 OrdemServicoResponse
     GW -->> Cliente: 201
@@ -57,9 +44,9 @@ sequenceDiagram
 
 ## Pontos de decisão relevantes
 
-- **Estoque é debitado na abertura, não depois**: `PecaRepository.save` roda
-  dentro da mesma transação de `abrir()` — se qualquer passo falhar depois, a
-  transação inteira (incluindo a redução de estoque) é revertida.
+- **Sem acesso ao banco alheio**: o OS Service não consulta nem atualiza o
+  catálogo do Execution Service. A Saga publicará `SolicitarDiagnostico` após a
+  abertura; o snapshot de diagnóstico será salvo quando receber o evento.
 - **`statusDesde` != `atualizadoEm`**: `statusDesde` só muda em transições de
   status (`avancarStatus`, `responderOrcamento`, `atualizarStatusExterno`); é
   o campo usado para calcular a métrica

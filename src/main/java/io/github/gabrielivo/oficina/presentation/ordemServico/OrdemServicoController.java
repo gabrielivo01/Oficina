@@ -28,15 +28,18 @@ public class OrdemServicoController {
 
     private final OrdemServicoService ordemServicoService;
     private final OrdemServicoMapper ordemServicoMapper;
+    private final SagaMapper sagaMapper;
 
-    public OrdemServicoController(OrdemServicoService ordemServicoService, OrdemServicoMapper ordemServicoMapper) {
+    public OrdemServicoController(
+            OrdemServicoService ordemServicoService, OrdemServicoMapper ordemServicoMapper, SagaMapper sagaMapper) {
         this.ordemServicoService = ordemServicoService;
         this.ordemServicoMapper = ordemServicoMapper;
+        this.sagaMapper = sagaMapper;
     }
 
     @Operation(
             summary = "Abrir ordem de serviço",
-            description = "Cria uma nova OS recebendo cliente, veículo, serviços e peças",
+            description = "Cria uma nova OS para diagnóstico; orçamento e itens são recebidos pelo fluxo da Saga",
             responses = {
                 @ApiResponse(
                         responseCode = "201",
@@ -84,11 +87,11 @@ public class OrdemServicoController {
 
     @Operation(
             summary = "Cancelar ordem de serviço",
-            description = "Permitido em qualquer status antes de FINALIZADA; registra o motivo no histórico",
+            description = "Solicita o cancelamento; a OS só muda para CANCELADA após a conclusão das compensações",
             responses = {
                 @ApiResponse(
-                        responseCode = "200",
-                        description = "OS cancelada",
+                        responseCode = "202",
+                        description = "Solicitação de cancelamento aceita",
                         content = @Content(schema = @Schema(implementation = OrdemServicoResponse.class))),
                 @ApiResponse(responseCode = "422", description = "OS finalizada, entregue ou já cancelada")
             })
@@ -96,7 +99,7 @@ public class OrdemServicoController {
     public ResponseEntity<OrdemServicoResponse> cancelar(
             @PathVariable String id, @Valid @RequestBody(required = false) CancelarOrdemServicoRequest request) {
         OrdemServico os = ordemServicoService.cancelar(id, request == null ? null : request.motivo());
-        return ResponseEntity.ok(ordemServicoMapper.toResponse(os));
+        return ResponseEntity.accepted().body(ordemServicoMapper.toResponse(os));
     }
 
     @Operation(
@@ -115,20 +118,11 @@ public class OrdemServicoController {
     }
 
     @Operation(
-            summary = "Responder aprovação de orçamento",
-            description = "Recebe a decisão do cliente sobre o orçamento e atualiza o status da OS",
-            responses = {
-                @ApiResponse(
-                        responseCode = "200",
-                        description = "Resposta registrada com sucesso",
-                        content = @Content(schema = @Schema(implementation = OrdemServicoResponse.class)))
-            })
-    @PostMapping("/{id}/aprovacao-orcamento")
-    public ResponseEntity<OrdemServicoResponse> responderOrcamento(
-            @Parameter(description = "Identificador da ordem de serviço") @PathVariable String id,
-            @Valid @RequestBody ResponderOrcamentoRequest request) {
-        OrdemServico os = ordemServicoService.responderOrcamento(id, request.aprovado(), request.observacao());
-        return ResponseEntity.ok(ordemServicoMapper.toResponse(os));
+            summary = "Consultar estado da Saga",
+            description = "Retorna a etapa, situação e histórico de eventos da orquestração da OS")
+    @GetMapping("/{id}/saga")
+    public ResponseEntity<SagaResponse> consultarSaga(@PathVariable String id) {
+        return ResponseEntity.ok(sagaMapper.toResponse(ordemServicoService.consultarSaga(id)));
     }
 
     @GetMapping("/cliente/{clienteId}")
@@ -147,22 +141,9 @@ public class OrdemServicoController {
         return ResponseEntity.ok(lista);
     }
 
-    @PostMapping("/{id}/itens")
-    public ResponseEntity<OrdemServicoResponse> adicionarItem(
-            @PathVariable String id, @Valid @RequestBody AdicionarItemOSRequest request) {
-        OrdemServico os = ordemServicoService.adicionarItem(ordemServicoMapper.toCommand(id, request));
-        return ResponseEntity.ok(ordemServicoMapper.toResponse(os));
-    }
-
-    @DeleteMapping("/{id}/itens/{itemId}")
-    public ResponseEntity<OrdemServicoResponse> removerItem(@PathVariable String id, @PathVariable String itemId) {
-        OrdemServico os = ordemServicoService.removerItem(id, itemId);
-        return ResponseEntity.ok(ordemServicoMapper.toResponse(os));
-    }
-
-    @PatchMapping("/{id}/avancar-status")
-    public ResponseEntity<OrdemServicoResponse> avancarStatus(@PathVariable String id) {
-        OrdemServico os = ordemServicoService.avancarStatus(id);
+    @PostMapping("/{id}/entregar")
+    public ResponseEntity<OrdemServicoResponse> entregar(@PathVariable String id) {
+        OrdemServico os = ordemServicoService.entregar(id);
         return ResponseEntity.ok(ordemServicoMapper.toResponse(os));
     }
 }

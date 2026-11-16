@@ -21,6 +21,9 @@ public class Cliente {
     @Column(length = 20)
     private String telefone;
 
+    @Column(length = 254)
+    private String email;
+
     @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "endereco_id")
     private Endereco endereco;
@@ -38,11 +41,18 @@ public class Cliente {
     public Cliente() {}
 
     public Cliente(String cpf, String nome, String telefone, Endereco endereco) {
+        this(cpf, nome, telefone, null, endereco);
+    }
+
+    public Cliente(String cpf, String nome, String telefone, String email, Endereco endereco) {
         validar(cpf, nome);
+        email = normalizarEmail(email);
+        validarEmail(email);
         this.id = UUID.randomUUID().toString();
         this.cpf = cpf;
         this.nome = nome;
         this.telefone = telefone;
+        this.email = email;
         this.endereco = endereco;
         this.status = StatusCliente.ATIVO;
     }
@@ -65,9 +75,16 @@ public class Cliente {
     }
 
     public void atualizar(String nome, String telefone, Endereco endereco) {
+        atualizar(nome, telefone, email, endereco);
+    }
+
+    public void atualizar(String nome, String telefone, String email, Endereco endereco) {
         if (nome == null || nome.isBlank()) throw new IllegalArgumentException("Nome é obrigatório.");
+        email = email == null ? this.email : normalizarEmail(email);
+        validarEmail(email);
         this.nome = nome;
         this.telefone = telefone;
+        this.email = email;
         this.endereco = endereco;
     }
 
@@ -100,6 +117,10 @@ public class Cliente {
         return telefone;
     }
 
+    public String getEmail() {
+        return email;
+    }
+
     public Endereco getEndereco() {
         return endereco;
     }
@@ -114,5 +135,15 @@ public class Cliente {
 
     public StatusCliente getStatus() {
         return status;
+    }
+
+    private static void validarEmail(String email) {
+        if (email != null && !email.isBlank() && !email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+            throw new IllegalArgumentException("E-mail inválido.");
+        }
+    }
+
+    private static String normalizarEmail(String email) {
+        return email == null || email.isBlank() ? null : email.strip();
     }
 }

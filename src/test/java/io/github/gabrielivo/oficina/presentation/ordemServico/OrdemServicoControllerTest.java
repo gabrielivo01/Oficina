@@ -33,7 +33,7 @@ class OrdemServicoControllerTest {
 
     @Test
     void deveAbrirOrdemServicoERetornarCreated() {
-        OrdemServicoRequest request = new OrdemServicoRequest("cliente-id", "veiculo-id", null);
+        OrdemServicoRequest request = new OrdemServicoRequest("cliente-id", "veiculo-id");
         AbrirOrdemServicoCommand command = new AbrirOrdemServicoCommand("cliente-id", "veiculo-id");
         Cliente cliente = new Cliente("11122233344", "Gabriel", "61999999999", null);
         Veiculo veiculo = new Veiculo(cliente, "ABC1234", "Fiat", "Uno", 2020);
@@ -88,7 +88,7 @@ class OrdemServicoControllerTest {
     }
 
     @Test
-    void deveAvancarStatusERetornarOk() {
+    void deveSolicitarCancelamentoERetornarAccepted() {
         String id = "os-id";
         Cliente cliente = new Cliente("11122233344", "Gabriel", "61999999999", null);
         Veiculo veiculo = new Veiculo(cliente, "ABC1234", "Fiat", "Uno", 2020);
@@ -105,14 +105,15 @@ class OrdemServicoControllerTest {
                 ordemServico.getCriadoEm(),
                 ordemServico.getAtualizadoEm());
 
-        when(ordemServicoService.avancarStatus(id)).thenReturn(ordemServico);
+        when(ordemServicoService.cancelar(id, "Desistência")).thenReturn(ordemServico);
         when(ordemServicoMapper.toResponse(ordemServico)).thenReturn(responseBody);
 
-        ResponseEntity<OrdemServicoResponse> response = ordemServicoController.avancarStatus(id);
+        ResponseEntity<OrdemServicoResponse> response =
+                ordemServicoController.cancelar(id, new CancelarOrdemServicoRequest("Desistência"));
 
-        assertEquals(200, response.getStatusCode().value());
+        assertEquals(202, response.getStatusCode().value());
         assertSame(responseBody, response.getBody());
-        verify(ordemServicoService).avancarStatus(id);
+        verify(ordemServicoService).cancelar(id, "Desistência");
     }
 
     @Test

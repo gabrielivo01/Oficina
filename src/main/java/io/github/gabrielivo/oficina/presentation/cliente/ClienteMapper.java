@@ -13,12 +13,12 @@ public class ClienteMapper {
 
     public CriarClienteCommand toCommand(ClienteRequest request) {
         EnderecoCommand endCmd = request.endereco() != null ? toEnderecoCommand(request.endereco()) : null;
-        return new CriarClienteCommand(request.cpf(), request.nome(), request.telefone(), endCmd);
+        return new CriarClienteCommand(request.cpf(), request.nome(), request.telefone(), request.email(), endCmd);
     }
 
     public AtualizarClienteCommand toCommand(AtualizarClienteRequest request) {
         EnderecoCommand endCmd = request.endereco() != null ? toEnderecoCommand(request.endereco()) : null;
-        return new AtualizarClienteCommand(request.nome(), request.telefone(), endCmd);
+        return new AtualizarClienteCommand(request.nome(), request.telefone(), request.email(), endCmd);
     }
 
     public ClienteResponse toResponse(Cliente cliente) {
@@ -28,6 +28,7 @@ public class ClienteMapper {
                 cliente.getCpf(),
                 cliente.getNome(),
                 cliente.getTelefone(),
+                cliente.getEmail(),
                 endRes,
                 cliente.getCriadoEm(),
                 cliente.getAtualizadoEm(),

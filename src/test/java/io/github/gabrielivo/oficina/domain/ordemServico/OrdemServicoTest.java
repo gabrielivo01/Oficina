@@ -19,7 +19,7 @@ class OrdemServicoTest {
         return new OrdemServico(cliente, veiculo);
     }
 
-    /** Leva a OS do status inicial até o status pedido pelo caminho feliz (avanço manual). */
+    /** Prepara o agregado por transições explícitas usadas como fixture de teste. */
     private static OrdemServico osEm(StatusOrdemServico alvo) {
         OrdemServico os = novaOs();
         if (alvo == StatusOrdemServico.CANCELADA) {
@@ -27,7 +27,7 @@ class OrdemServicoTest {
             return os;
         }
         while (os.getStatus() != alvo) {
-            os.avancarStatus();
+            os.alterarStatus(os.getStatus().proximoStatus(), OrigemMudancaStatus.SAGA, "fixture");
         }
         return os;
     }
@@ -43,43 +43,22 @@ class OrdemServicoTest {
     }
 
     @Test
-    void deveAdicionarItemERecalcularTotal() {
+    void deveRegistrarSnapshotDeDiagnosticoUmaUnicaVez() {
         OrdemServico os = novaOs();
-
         ItemOrdemServico item = new ItemOrdemServico(os, "Troca de óleo", new BigDecimal("100.00"));
-        os.adicionarItem(item);
+        os.alterarStatus(StatusOrdemServico.EM_DIAGNOSTICO, OrigemMudancaStatus.SAGA, "fixture");
+        os.registrarSnapshotDiagnostico(java.util.List.of(item));
 
         assertEquals(1, os.getItens().size());
         assertEquals(new BigDecimal("100.00"), os.getValorTotal());
-    }
-
-    @Test
-    void deveRemoverItemERecalcularTotal() {
-        OrdemServico os = novaOs();
-
-        ItemOrdemServico item = new ItemOrdemServico(os, "Troca de óleo", new BigDecimal("100.00"));
-        os.adicionarItem(item);
-        os.removerItem(item.getId());
-
-        assertTrue(os.getItens().isEmpty());
-        assertEquals(BigDecimal.ZERO, os.getValorTotal());
-    }
-
-    @Test
-    void deveLancarExcecaoAoRemoverItemInexistente() {
-        OrdemServico os = novaOs();
-
-        OrdemServicoException exception =
-                assertThrows(OrdemServicoException.class, () -> os.removerItem("item-inexistente"));
-
-        assertEquals("Item não encontrado na OS: item-inexistente", exception.getMessage());
+        assertThrows(OrdemServicoException.class, () -> os.registrarSnapshotDiagnostico(java.util.List.of(item)));
     }
 
     @Test
     void deveAvancarStatusQuandoTransicaoValida() {
         OrdemServico os = novaOs();
 
-        os.avancarStatus();
+        os.alterarStatus(os.getStatus().proximoStatus(), OrigemMudancaStatus.SAGA, "teste");
 
         assertEquals(StatusOrdemServico.EM_DIAGNOSTICO, os.getStatus());
     }
@@ -88,7 +67,9 @@ class OrdemServicoTest {
     void deveLancarExcecaoAoAvancarOsEntregue() {
         OrdemServico os = osEm(StatusOrdemServico.ENTREGUE);
 
-        OrdemServicoException exception = assertThrows(OrdemServicoException.class, os::avancarStatus);
+        OrdemServicoException exception = assertThrows(
+                OrdemServicoException.class,
+                () -> os.alterarStatus(os.getStatus().proximoStatus(), OrigemMudancaStatus.SAGA, "teste"));
 
         assertTrue(exception.getMessage().contains("Transição inválida"));
     }
@@ -97,7 +78,7 @@ class OrdemServicoTest {
     void deveIrParaAguardandoPagamentoQuandoOrcamentoAprovado() {
         OrdemServico os = osEm(StatusOrdemServico.AGUARDANDO_APROVACAO);
 
-        os.aprovarOrcamento();
+        os.alterarStatus(StatusOrdemServico.AGUARDANDO_PAGAMENTO, OrigemMudancaStatus.SAGA, "OrcamentoAprovado");
 
         assertEquals(StatusOrdemServico.AGUARDANDO_PAGAMENTO, os.getStatus());
     }
@@ -106,26 +87,18 @@ class OrdemServicoTest {
     void deveLancarExcecaoAoAprovarOrcamentoForaDeAguardandoAprovacao() {
         OrdemServico os = novaOs();
 
-        assertThrows(OrdemServicoException.class, os::aprovarOrcamento);
+        assertThrows(
+                OrdemServicoException.class,
+                () -> os.alterarStatus(
+                        StatusOrdemServico.AGUARDANDO_PAGAMENTO, OrigemMudancaStatus.SAGA, "OrcamentoAprovado"));
         assertEquals(StatusOrdemServico.RECEBIDA, os.getStatus());
-    }
-
-    @Test
-    void deveManterStatusESemHistoricoNovoQuandoOrcamentoRecusado() {
-        OrdemServico os = osEm(StatusOrdemServico.AGUARDANDO_APROVACAO);
-        int registrosAntes = os.getHistorico().size();
-
-        os.recusarOrcamento();
-
-        assertEquals(StatusOrdemServico.AGUARDANDO_APROVACAO, os.getStatus());
-        assertEquals(registrosAntes, os.getHistorico().size());
     }
 
     @Test
     void deveAtualizarStatusExternoQuandoTransicaoEhValida() {
         OrdemServico os = novaOs();
 
-        os.atualizarStatusExterno(StatusOrdemServico.EM_DIAGNOSTICO);
+        os.alterarStatus(StatusOrdemServico.EM_DIAGNOSTICO, OrigemMudancaStatus.SAGA, "DiagnosticoIniciado");
 
         assertEquals(StatusOrdemServico.EM_DIAGNOSTICO, os.getStatus());
     }
@@ -134,17 +107,19 @@ class OrdemServicoTest {
     void deveLancarExcecaoQuandoStatusExternoNulo() {
         OrdemServico os = novaOs();
 
-        OrdemServicoException exception =
-                assertThrows(OrdemServicoException.class, () -> os.atualizarStatusExterno(null));
+        OrdemServicoException exception = assertThrows(
+                OrdemServicoException.class, () -> os.alterarStatus(null, OrigemMudancaStatus.SAGA, "teste"));
 
-        assertEquals("Status é obrigatório.", exception.getMessage());
+        assertTrue(exception.getMessage().contains("Transição inválida"));
     }
 
     @Test
     void deveLancarExcecaoQuandoStatusExternoPulaEtapa() {
         OrdemServico os = novaOs();
 
-        assertThrows(OrdemServicoException.class, () -> os.atualizarStatusExterno(StatusOrdemServico.EM_EXECUCAO));
+        assertThrows(
+                OrdemServicoException.class,
+                () -> os.alterarStatus(StatusOrdemServico.EM_EXECUCAO, OrigemMudancaStatus.SAGA, "teste"));
         assertEquals(StatusOrdemServico.RECEBIDA, os.getStatus());
     }
 
@@ -168,9 +143,9 @@ class OrdemServicoTest {
     void deveRegistrarCadaTransicaoNoHistoricoEmOrdem() {
         OrdemServico os = novaOs();
 
-        os.avancarStatus();
-        os.atualizarStatusExterno(StatusOrdemServico.AGUARDANDO_APROVACAO);
-        os.aprovarOrcamento();
+        os.alterarStatus(StatusOrdemServico.EM_DIAGNOSTICO, OrigemMudancaStatus.SAGA, "fixture");
+        os.alterarStatus(StatusOrdemServico.AGUARDANDO_APROVACAO, OrigemMudancaStatus.SAGA, "fixture");
+        os.alterarStatus(StatusOrdemServico.AGUARDANDO_PAGAMENTO, OrigemMudancaStatus.SAGA, "OrcamentoAprovado");
 
         assertThat(os.getHistorico())
                 .extracting(
@@ -184,17 +159,17 @@ class OrdemServicoTest {
                                 2,
                                 StatusOrdemServico.RECEBIDA,
                                 StatusOrdemServico.EM_DIAGNOSTICO,
-                                OrigemMudancaStatus.USUARIO),
+                                OrigemMudancaStatus.SAGA),
                         tuple(
                                 3,
                                 StatusOrdemServico.EM_DIAGNOSTICO,
                                 StatusOrdemServico.AGUARDANDO_APROVACAO,
-                                OrigemMudancaStatus.SISTEMA),
+                                OrigemMudancaStatus.SAGA),
                         tuple(
                                 4,
                                 StatusOrdemServico.AGUARDANDO_APROVACAO,
                                 StatusOrdemServico.AGUARDANDO_PAGAMENTO,
-                                OrigemMudancaStatus.USUARIO));
+                                OrigemMudancaStatus.SAGA));
         assertThat(os.getStatusDesde()).isEqualTo(os.getHistorico().get(3).getAlteradoEm());
     }
 
@@ -283,7 +258,7 @@ class OrdemServicoTest {
     void deveRegistrarUmEventoPorTransicaoEEsvaziarAoExtrair() {
         OrdemServico os = novaOs();
 
-        os.avancarStatus();
+        os.alterarStatus(StatusOrdemServico.EM_DIAGNOSTICO, OrigemMudancaStatus.SAGA, "teste");
         os.cancelar(OrigemMudancaStatus.SAGA, "Compensação");
 
         assertThat(os.extrairEventos())
@@ -298,8 +273,8 @@ class OrdemServicoTest {
                                 os.getId(),
                                 StatusOrdemServico.RECEBIDA,
                                 StatusOrdemServico.EM_DIAGNOSTICO,
-                                OrigemMudancaStatus.USUARIO,
-                                "Avanço manual de status"),
+                                OrigemMudancaStatus.SAGA,
+                                "teste"),
                         tuple(
                                 os.getId(),
                                 StatusOrdemServico.EM_DIAGNOSTICO,
@@ -310,22 +285,24 @@ class OrdemServicoTest {
     }
 
     @Test
-    void naoDeveRegistrarEventoQuandoTransicaoInvalidaOuOrcamentoRecusado() {
+    void naoDeveRegistrarEventoQuandoTransicaoInvalida() {
         OrdemServico os = osEm(StatusOrdemServico.AGUARDANDO_APROVACAO);
         os.extrairEventos();
 
-        assertThrows(OrdemServicoException.class, () -> os.atualizarStatusExterno(StatusOrdemServico.ENTREGUE));
-        os.recusarOrcamento();
+        assertThrows(
+                OrdemServicoException.class,
+                () -> os.alterarStatus(StatusOrdemServico.ENTREGUE, OrigemMudancaStatus.SAGA, "teste"));
 
         assertThat(os.extrairEventos()).isEmpty();
     }
 
     @Test
-    void naoDevePermitirAdicionarItemEmOsCancelada() {
+    void naoDeveRegistrarSnapshotEmOsCancelada() {
         OrdemServico os = osEm(StatusOrdemServico.CANCELADA);
 
         assertThrows(
                 OrdemServicoException.class,
-                () -> os.adicionarItem(new ItemOrdemServico(os, "Troca de óleo", new BigDecimal("10.00"))));
+                () -> os.registrarSnapshotDiagnostico(
+                        java.util.List.of(new ItemOrdemServico(os, "Troca de óleo", new BigDecimal("10.00")))));
     }
 }

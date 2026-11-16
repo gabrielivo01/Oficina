@@ -1,6 +1,7 @@
 package io.github.gabrielivo.oficina.presentation.cliente;
 
 import io.github.gabrielivo.oficina.shared.util.CpfValido;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -13,4 +14,12 @@ public record ClienteRequest(
         @NotBlank(message = "Nome é obrigatório") String nome,
 
         String telefone,
-        EnderecoRequest endereco) {}
+
+        @NotBlank(message = "E-mail é obrigatório") @Email(message = "E-mail inválido")
+        String email,
+
+        EnderecoRequest endereco) {
+    public ClienteRequest(String cpf, String nome, String telefone, EnderecoRequest endereco) {
+        this(cpf, nome, telefone, null, endereco);
+    }
+}

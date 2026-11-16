@@ -154,7 +154,7 @@ class ArquiteturaTest {
 
     /**
      * Dependências entre módulos de domínio aceitas (acíclicas e coerentes com o modelo): veiculo → cliente;
-     * ordemServico → cliente, veiculo, peca; pagamento → ordemServico. Qualquer ciclo é proibido.
+     * ordemServico → cliente, veiculo, peca. Cobranças pertencem ao Billing Service. Qualquer ciclo é proibido.
      */
     @ArchTest
     static final ArchRule modulosDeDominioSemCiclos =

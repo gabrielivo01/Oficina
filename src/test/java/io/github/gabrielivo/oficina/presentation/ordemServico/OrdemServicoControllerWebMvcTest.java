@@ -44,7 +44,7 @@ import org.springframework.test.web.servlet.MockMvc;
                         type = FilterType.ASSIGNABLE_TYPE,
                         classes = {JwtAuthFilter.class, InternalApiKeyFilter.class}))
 @AutoConfigureMockMvc(addFilters = false)
-@Import(OrdemServicoMapper.class)
+@Import({OrdemServicoMapper.class, SagaMapper.class})
 class OrdemServicoControllerWebMvcTest {
 
     @Autowired
@@ -107,7 +107,7 @@ class OrdemServicoControllerWebMvcTest {
     @Test
     void deveRetornarHistoricoDeStatus() throws Exception {
         OrdemServico os = novaOs();
-        os.avancarStatus();
+        os.alterarStatus(StatusOrdemServico.EM_DIAGNOSTICO, OrigemMudancaStatus.SAGA, "DiagnosticoIniciado");
         when(ordemServicoService.listarHistorico("os-1")).thenReturn(os.getHistorico());
 
         mockMvc.perform(get("/ordens-servico/os-1/historico"))
@@ -118,7 +118,7 @@ class OrdemServicoControllerWebMvcTest {
                 .andExpect(jsonPath("$[0].statusNovo").value("RECEBIDA"))
                 .andExpect(jsonPath("$[1].statusAnterior").value("RECEBIDA"))
                 .andExpect(jsonPath("$[1].statusNovo").value("EM_DIAGNOSTICO"))
-                .andExpect(jsonPath("$[1].origem").value("USUARIO"))
+                .andExpect(jsonPath("$[1].origem").value("SAGA"))
                 .andExpect(jsonPath("$[1].alteradoEm").exists());
     }
 
@@ -141,7 +141,7 @@ class OrdemServicoControllerWebMvcTest {
         mockMvc.perform(post("/ordens-servico/os-1/cancelar")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"motivo\":\"Cliente desistiu\"}"))
-                .andExpect(status().isOk())
+                .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.status").value("CANCELADA"));
     }
 
@@ -152,7 +152,7 @@ class OrdemServicoControllerWebMvcTest {
         when(ordemServicoService.cancelar(eq("os-1"), isNull())).thenReturn(os);
 
         mockMvc.perform(post("/ordens-servico/os-1/cancelar"))
-                .andExpect(status().isOk())
+                .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.status").value("CANCELADA"));
     }
 

@@ -26,9 +26,15 @@ public class ProcessadorMensagensService {
     public ProcessadorMensagensService(MensagemProcessadaRepository inbox, List<ManipuladorMensagem> manipuladores) {
         this.inbox = inbox;
         for (ManipuladorMensagem manipulador : manipuladores) {
-            ManipuladorMensagem anterior = this.manipuladores.put(manipulador.tipo(), manipulador);
-            if (anterior != null) {
-                throw new IllegalStateException("Dois manipuladores para o tipo " + manipulador.tipo());
+            List<String> tipos = manipulador.tipos();
+            if (tipos == null || tipos.isEmpty()) {
+                tipos = List.of(manipulador.tipo());
+            }
+            for (String tipo : tipos) {
+                ManipuladorMensagem anterior = this.manipuladores.put(tipo, manipulador);
+                if (anterior != null) {
+                    throw new IllegalStateException("Dois manipuladores para o tipo " + tipo);
+                }
             }
         }
     }

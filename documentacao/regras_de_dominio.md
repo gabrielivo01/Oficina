@@ -84,9 +84,9 @@ Convenções gerais:
 - `reporEstoque(q)`: exige q > 0.
 - Estoque **baixo**: `quantidadeEstoque ≤ estoqueMinimo`. **Crítico**: `quantidadeEstoque ≤ estoqueMinimo / 2`.
 
-## Pagamento (`domain/pagamento`)
-- Referencia uma OS existente; valor > 0; forma obrigatória (`PIX`, `DINHEIRO`, `CARTAO`).
-- No máximo um pagamento por OS (`PagamentoService` → `PagamentoException`).
+## Cobrança e pagamento
+- Pertencem ao Billing Service e ao MongoDB próprio; o OS Service não registra pagamentos localmente.
+- A Saga correlaciona orçamento, cobrança e pagamento pelos ids da OS e da cobrança.
 
 ## Usuário (`domain/usuario`) e autenticação
 - `Usuario` é o login de staff (login + senha com hash BCrypt). O login é único (`UsuarioService`).

@@ -43,12 +43,13 @@ import tools.jackson.databind.json.JsonMapper;
  */
 class ContratosMensagensTest {
 
-    /** Seção 3.2 do plano (7 comandos + 13 eventos) + StatusOrdemServicoAlterado (ADR 0010). */
+    /** Seção 3.2 do plano, incluindo confirmações de compensação, e StatusOrdemServicoAlterado. */
     private static final Set<String> TIPOS = Set.of(
             "SolicitarDiagnostico",
             "GerarOrcamento",
             "CriarCobranca",
             "IniciarExecucao",
+            "CancelarExecucao",
             "LiberarReservaPecas",
             "CancelarCobranca",
             "EstornarPagamento",
@@ -58,10 +59,12 @@ class ContratosMensagensTest {
             "OrcamentoAprovado",
             "OrcamentoRecusado",
             "CobrancaCriada",
+            "CobrancaCancelada",
             "PagamentoConfirmado",
             "PagamentoRejeitado",
             "ExecucaoIniciada",
             "ExecucaoRecusada",
+            "ExecucaoCancelada",
             "ExecucaoFinalizada",
             "ReservaPecasLiberada",
             "PagamentoEstornado",

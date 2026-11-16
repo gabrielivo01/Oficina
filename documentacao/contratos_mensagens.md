@@ -61,19 +61,22 @@ Fluxo da Saga: seção 3.2 do `plano_fase4.md`; topologia: seção 3.3 e
 | `LiberarReservaPecas` | comando (compensação) | OS | Execution | `oficina.comandos` | `execution.comandos` | `execution.comandos` | 5b, 7b, 8b |
 | `ReservaPecasLiberada` | evento | Execution | OS | `oficina.eventos` | `execution.reserva-pecas-liberada` | `os.saga.eventos` | 5b, 7b, 8b |
 | `CobrancaCriada` | evento | Billing | OS | `oficina.eventos` | `billing.cobranca-criada` | `os.saga.eventos` | 6 |
+| `CobrancaCancelada` | evento | Billing | OS | `oficina.eventos` | `billing.cobranca-cancelada` | `os.saga.eventos` | 7b (confirmação da compensação) |
 | `PagamentoConfirmado` | evento | Billing | OS | `oficina.eventos` | `billing.pagamento-confirmado` | `os.saga.eventos` | 7a |
 | `IniciarExecucao` | comando | OS | Execution | `oficina.comandos` | `execution.comandos` | `execution.comandos` | 7a |
+| `CancelarExecucao` | comando (compensação) | OS | Execution | `oficina.comandos` | `execution.comandos` | `execution.comandos` | cancelamento manual |
 | `PagamentoRejeitado` | evento | Billing | OS | `oficina.eventos` | `billing.pagamento-rejeitado` | `os.saga.eventos` | 7b |
 | `CancelarCobranca` | comando (compensação) | OS | Billing | `oficina.comandos` | `billing.comandos` | `billing.comandos` | 7b |
 | `ExecucaoIniciada` | evento | Execution | OS | `oficina.eventos` | `execution.execucao-iniciada` | `os.saga.eventos` | 8a |
 | `ExecucaoRecusada` | evento | Execution | OS | `oficina.eventos` | `execution.execucao-recusada` | `os.saga.eventos` | 8b |
+| `ExecucaoCancelada` | evento | Execution | OS | `oficina.eventos` | `execution.execucao-cancelada` | `os.saga.eventos` | confirmação de cancelamento manual |
 | `EstornarPagamento` | comando (compensação) | OS | Billing | `oficina.comandos` | `billing.comandos` | `billing.comandos` | 8b |
 | `PagamentoEstornado` | evento | Billing | OS | `oficina.eventos` | `billing.pagamento-estornado` | `os.saga.eventos` | 8b |
 | `ExecucaoFinalizada` | evento | Execution | OS | `oficina.eventos` | `execution.execucao-finalizada` | `os.saga.eventos` | 9 |
 | `StatusOrdemServicoAlterado` | evento (fora da Saga) | OS | OS (notificação) e quem assinar | `oficina.eventos` | `os.status-alterado` | `os.saga.eventos` | toda transição de status (ADR 0010) |
 
-Situação na Fase 2: só `StatusOrdemServicoAlterado` é produzido e consumido. Os demais são implementados nas
-Fases 3 (Execution), 4 (Billing) e 5 (orquestrador no OS Service).
+Os contratos acima cobrem os três serviços, incluindo a orquestração do OS Service e as confirmações de
+compensação do Execution e Billing.
 
 ## Comandos
 
@@ -119,7 +122,7 @@ snapshot dos itens, notifica o cliente e responde `OrcamentoGerado`. Idempotente
 
 | Campo | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
-| `cliente.id`, `cliente.nome`, `cliente.cpf` | string | sim | Dados para o orçamento e a notificação. |
+| `cliente.id`, `cliente.nome`, `cliente.cpf`, `cliente.email` | string | sim | Dados para o orçamento e a notificação. Clientes existentes sem e-mail devem atualizá-lo antes de abrir uma OS que gere orçamento. |
 | `cliente.telefone` | string | não | Contato. |
 | `veiculo.placa`, `veiculo.marca`, `veiculo.modelo` | string | sim | Identificação do veículo no orçamento. |
 | `veiculo.ano` | inteiro | não | Ano. |
@@ -138,7 +141,8 @@ snapshot dos itens, notifica o cliente e responde `OrcamentoGerado`. Idempotente
       "id": "1a95441a-321b-428e-913a-d44a4033ad81",
       "nome": "Maria Souza",
       "cpf": "52998224725",
-      "telefone": "11999999999"
+      "telefone": "11999999999",
+      "email": "maria.souza@example.com"
     },
     "veiculo": {
       "placa": "ABC1D23",
@@ -220,6 +224,32 @@ OS Service → Execution Service, ao receber `PagamentoConfirmado` (passo 7a). O
     "reservaId": "c0a8012e-0002-4000-8000-000000000002",
     "cobrancaId": "b1110000-0005-4000-8000-000000000005",
     "placa": "ABC1D23"
+  }
+}
+```
+
+### `CancelarExecucao`
+
+OS Service → Execution Service. **Compensação** de cancelamento manual após o pagamento e antes da conclusão do
+reparo. Execution cancela uma tarefa na fila ou em andamento e repõe o estoque consumido; só então publica
+`ExecucaoCancelada`. Se o reparo já tiver sido concluído, republica `ExecucaoFinalizada` e a Saga mantém a OS
+finalizada em vez de reembolsar uma execução concluída.
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `reservaId` | UUID | sim | Reserva a devolver ao estoque. |
+| `motivo` | enum | sim | `CANCELAMENTO`. |
+
+```json
+{
+  "messageId": "5e7d0a10-0000-4000-8000-000000000023",
+  "type": "CancelarExecucao",
+  "sagaId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "osId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "occurredAt": "2026-11-15T15:25:00Z",
+  "payload": {
+    "reservaId": "c0a8012e-0002-4000-8000-000000000002",
+    "motivo": "CANCELAMENTO"
   }
 }
 ```
@@ -500,6 +530,33 @@ Billing Service → OS Service, com o link/QR do Mercado Pago (passo 6). A OS va
 }
 ```
 
+### `CobrancaCancelada`
+
+Billing Service → OS Service, após cancelar uma cobrança pendente (passo 7b). A confirmação permite ao orquestrador
+liberar a reserva de peças apenas depois de invalidar o link de pagamento. Se o pagamento já tiver sido aprovado, o
+Billing publica `PagamentoConfirmado` em vez deste evento para que a Saga execute o estorno.
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `cobrancaId` | UUID | sim | Cobrança cancelada. |
+| `motivo` | string | sim | Motivo do cancelamento. |
+| `canceladaEm` | ISO-8601 | sim | Confirmação do cancelamento. |
+
+```json
+{
+  "messageId": "5e7d0a10-0000-4000-8000-000000000022",
+  "type": "CobrancaCancelada",
+  "sagaId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "osId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "occurredAt": "2026-11-15T15:15:00Z",
+  "payload": {
+    "cobrancaId": "b1110000-0005-4000-8000-000000000005",
+    "motivo": "PRAZO_PAGAMENTO_EXPIRADO",
+    "canceladaEm": "2026-11-15T15:15:00Z"
+  }
+}
+```
+
 ### `PagamentoConfirmado`
 
 Billing Service → OS Service, após confirmar o pagamento **consultando o gateway** (passo 7a). O orquestrador
@@ -607,6 +664,33 @@ da demonstração). A reserva **não** é consumida. O orquestrador compensa: `E
     "reservaId": "c0a8012e-0002-4000-8000-000000000002",
     "motivo": "Execução recusada pela simulação de falha (app.simulacao.recusar-inicio-execucao)",
     "recusadaEm": "2026-11-15T15:20:00Z"
+  }
+}
+```
+
+### `ExecucaoCancelada`
+
+Execution Service → OS Service, após cancelar a tarefa de reparo e devolver ao estoque a reserva consumida. A Saga
+prossegue com `EstornarPagamento`; depois da confirmação do estorno, marca a OS como `CANCELADA`. Se a tarefa já
+estiver concluída, Execution publica `ExecucaoFinalizada` em vez deste evento.
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `tarefaId` | UUID | sim | Tarefa de reparo cancelada. |
+| `reservaId` | UUID | sim | Reserva devolvida ao estoque. |
+| `canceladaEm` | ISO-8601 | sim | Confirmação do cancelamento. |
+
+```json
+{
+  "messageId": "5e7d0a10-0000-4000-8000-000000000024",
+  "type": "ExecucaoCancelada",
+  "sagaId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "osId": "8d3b7c1e-2f4a-4e6b-9c0d-5a1b2c3d4e5f",
+  "occurredAt": "2026-11-15T15:25:01Z",
+  "payload": {
+    "tarefaId": "c0a8012e-0006-4000-8000-000000000006",
+    "reservaId": "c0a8012e-0002-4000-8000-000000000002",
+    "canceladaEm": "2026-11-15T15:25:01Z"
   }
 }
 ```

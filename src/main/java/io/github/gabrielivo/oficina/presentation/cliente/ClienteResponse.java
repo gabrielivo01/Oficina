@@ -8,7 +8,20 @@ public record ClienteResponse(
         String cpf,
         String nome,
         String telefone,
+        String email,
         EnderecoResponse endereco,
         LocalDateTime criadoEm,
         LocalDateTime atualizadoEm,
-        StatusCliente status) {}
+        StatusCliente status) {
+    public ClienteResponse(
+            String id,
+            String cpf,
+            String nome,
+            String telefone,
+            EnderecoResponse endereco,
+            LocalDateTime criadoEm,
+            LocalDateTime atualizadoEm,
+            StatusCliente status) {
+        this(id, cpf, nome, telefone, null, endereco, criadoEm, atualizadoEm, status);
+    }
+}

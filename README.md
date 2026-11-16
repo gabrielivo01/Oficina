@@ -1,8 +1,11 @@
 Oficina - Sistema de Gestão de Oficina Mecânica
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=gabrielivo01_oficina&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=gabrielivo01_oficina)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=gabrielivo01_oficina&metric=coverage)](https://sonarcloud.io/summary/new_code?id=gabrielivo01_oficina)
+
 Visão Geral
 
-Sistema RESTful para gestão completa de uma oficina mecânica, desenvolvido em Spring Boot com autenticação JWT. Permite gerenciar clientes, veículos, ordens de serviço, peças e pagamentos com controle automático de estoque.
+API REST do OS Service para clientes, veículos, ordens de serviço e autenticação JWT. Catálogo, estoque e execução pertencem ao [Execution Service](../oficina-execution-service/README.md); orçamentos e cobranças pertencem ao [Billing Service](../oficina-billing-service/README.md). O OS Service coordena o fluxo distribuído pela Saga.
 
 Arquitetura
 
@@ -21,15 +24,11 @@ src/main/java/io/github/gabrielivo/oficina/
 ├── application/          # Camada de aplicação (casos de uso)
 │   ├── cliente/         # Serviços de cliente
 │   ├── ordemServico/    # Serviços de ordem de serviço
-│   ├── pagamento/       # Serviços de pagamento
-│   ├── peca/           # Serviços de peças
 │   ├── usuario/        # Serviços de usuário
 │   └── veiculo/        # Serviços de veículo
 ├── domain/             # Camada de domínio (entidades e regras)
 │   ├── cliente/        # Entidades Cliente e Endereco
 │   ├── ordemServico/   # Entidades OrdemServico, ItemOrdemServico
-│   ├── pagamento/      # Entidade Pagamento
-│   ├── peca/          # Entidade Peca
 │   ├── usuario/       # Entidade Usuario
 │   └── veiculo/       # Entidade Veiculo
 ├── infrastructure/     # Camada de infraestrutura
@@ -39,8 +38,6 @@ src/main/java/io/github/gabrielivo/oficina/
     ├── auth/          # Autenticação
     ├── cliente/       # Endpoints de cliente
     ├── ordemServico/  # Endpoints de OS
-    ├── pagamento/     # Endpoints de pagamento
-    ├── peca/         # Endpoints de peças
     └── veiculo/      # Endpoints de veículo
 ```
 
@@ -67,29 +64,18 @@ Domínios de Negócio
 - **Relacionamento**: N:1 com Cliente
 - **Regras**: Placa única no sistema
 
-5 Peça 
-- **Responsabilidade**: Controle de estoque de peças
-- **Atributos**: nome, descrição, preço, quantidade em estoque, estoque mínimo
-- **Funcionalidades**:
-  - Controle automático de estoque
-  - Alertas de estoque baixo/crítico
-  - Reposição manual de estoque
-  - Redução automática ao usar em OS
-
-6 Ordem de Serviço 
+5 Ordem de Serviço
 - **Responsabilidade**: Gerenciamento completo do workflow de serviços
 - **Atributos**: cliente, veículo, status, valor total, itens
 - **Relacionamento**: 1:N com ItemOrdemServico
 
-7 Item de Ordem de Serviço 
-- **Responsabilidade**: Itens específicos de uma OS (serviços ou peças)
-- **Atributos**: descrição, tipo (SERVIÇO/PEÇA), valor, quantidade, peça (opcional)
-- **Funcionalidades**: Cálculo automático de valor total
+6 Item de Ordem de Serviço
+- **Responsabilidade**: Snapshot imutável dos serviços e peças informado pelo Execution Service ao concluir o diagnóstico pela Saga
+- **Atributos**: descrição, tipo, valor, quantidade e identificador/nome da peça quando aplicável
 
-8 Pagamento 
-- **Responsabilidade**: Registro de pagamentos das OS
-- **Atributos**: valor, forma de pagamento (PIX, DINHEIRO, CARTÃO)
-- **Relacionamento**: 1:1 com OrdemServico
+8 Cobrança e pagamento
+- **Responsabilidade**: orçamento, cobrança e integração com Mercado Pago no Billing Service.
+- **Persistência**: documentos no MongoDB do Billing; o OS Service consome eventos da Saga.
 
 Fluxos de Processamento
 
@@ -99,18 +85,14 @@ Autenticação JWT
 3. **Token**: Gera JWT com expiração de 30 minutos
 4. **Acesso**: Cliente usa token em Authorization header
 
-Controle de Estoque 
-1. **Cadastro de Peça**: Define estoque mínimo
-2. **Uso em OS**: Reduz automaticamente estoque ao adicionar peça
-3. **Cancelamento OS**: Restaura estoque automaticamente
-4. **Alertas**: Sistema identifica peças com estoque baixo/crítico
-5. **Reposição**: Permite reposição manual via endpoint
+Estoque
+- Catálogo, reservas, reposição e alertas de estoque são oferecidos pelo Execution Service.
+- O OS Service não acessa o banco do Execution; recebe `DiagnosticoConcluido` pela Saga e mantém seu snapshot independente.
 
 Validações de Negócio 
 - **CPF único** por cliente
 - **Placa única** por veículo
 - **Transições de status** válidas na OS
-- **Estoque suficiente** antes de usar peça
 - **Campos obrigatórios** em todas as entidades
 
 Workflow de Ordem de Serviço
@@ -120,53 +102,9 @@ Workflow de Ordem de Serviço
 RECEBIDA → EM_DIAGNOSTICO → AGUARDANDO_APROVACAO → EM_EXECUCAO → FINALIZADA → ENTREGUE
 ```
 
-Fluxo Completo
-
-1 **RECEBIDA**
-- Estado inicial ao criar OS
-- Cliente e veículo já cadastrados
-- Valor total = R$ 0,00
-
-2 **EM_DIAGNOSTICO** 
-- Adição de itens de diagnóstico
-- Serviços e peças podem ser adicionadas
-- Estoque reduzido automaticamente para peças
-- Valor total recalculado automaticamente
-
-3 **AGUARDANDO_APROVACAO** 
-- Diagnóstico concluído
-- Cliente aprova orçamento
-- Itens podem ser ajustados se necessário
-
-4 **EM_EXECUCAO** 
-- Serviços sendo executados
-- Peças sendo utilizadas
-- Novos itens podem ser adicionados
-
-5 **FINALIZADA** 
-- Serviços concluídos
-- Não permite mais alterações
-- Pronto para entrega/pagamento
-
-6 **ENTREGUE**
-- Veículo entregue ao cliente
-- Estado final, não permite alterações
-
-Operações Permitidas por Status
-
-| Operação | RECEBIDA | DIAG | APROV | EXEC | FINAL | ENTREGUE |
-|----------|----------|------|-------|------|-------|----------|
-| Adicionar Item | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Remover Item | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Alterar Item | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Avançar Status | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Cancelar | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Pagar | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
-
-Cancelamento e Estoque
-- **Cancelamento**: Só permitido até EM_EXECUCAO
-- **Restauração**: Estoque das peças é automaticamente restaurado
-- **Limpeza**: Todos os itens são removidos da OS
+O OS Service cria a OS no estado `RECEBIDA` e inicia a Saga transacionalmente com a ordem e o comando
+de diagnóstico na outbox. Execution mantém a fila de diagnóstico/reparo, catálogo e reservas; Billing
+mantém orçamento, cobrança e integração de pagamento. Os serviços não acessam os bancos uns dos outros.
 
 Como Executar
 
@@ -214,7 +152,6 @@ Acessar a Aplicação
 Dados Iniciais
 A aplicação cria automaticamente:
 - Usuário admin: `login=admin` | `senha=admin123`
-- Peças de exemplo com controle de estoque
 
 API Endpoints
 
@@ -246,57 +183,58 @@ Veículos
 - `PUT /veiculos/{id}` - Atualizar
 - `DELETE /veiculos/{id}` - Remover
 
-Peças
-- `GET /pecas` - Listar todas
-- `POST /pecas` - Criar nova
-- `GET /pecas/{id}` - Buscar por ID
-- `PUT /pecas/{id}` - Atualizar
-- `DELETE /pecas/{id}` - Remover
-- `POST /pecas/{id}/repor-estoque` - Repor estoque
-- `GET /pecas/estoque-baixo` - Peças com estoque baixo
-- `GET /pecas/estoque-critico` - Peças com estoque crítico
-
 Ordens de Serviço
 - `GET /ordens-servico?status=RECEBIDA&status=EM_DIAGNOSTICO&pagina=0&tamanho=20` - Listagem paginada
   (`{conteudo, pagina, tamanho, totalElementos, totalPaginas}`), ordenada por prioridade de status; sem
   `status`, só as OS ativas (exclui `FINALIZADA`, `ENTREGUE`, `CANCELADA`)
-- `POST /ordens-servico` - Criar nova OS com cliente, veículo, serviços e peças
+- `POST /ordens-servico` - Criar nova OS com cliente e veículo; diagnóstico e orçamento seguem pela Saga
 - `GET /ordens-servico/{id}` - Buscar por ID
 - `GET /ordens-servico/{id}/status` - Consultar status atual
 - `GET /ordens-servico/{id}/historico` - Histórico de status (anterior, novo, data/hora, origem, motivo)
-- `POST /ordens-servico/{id}/aprovacao-orcamento` - Aprovar (→ `AGUARDANDO_PAGAMENTO`) ou recusar orçamento
-- `PATCH /ordens-servico/{id}/avancar-status` - Avançar status
-- `POST /ordens-servico/{id}/itens` - Adicionar item
-- `DELETE /ordens-servico/{id}/itens/{itemId}` - Remover item
-- `POST /ordens-servico/{id}/cancelar` - Cancelar OS (corpo opcional `{"motivo": "..."}`; → `CANCELADA`)
+- `GET /ordens-servico/{id}/saga` - Consultar etapa, situação e histórico da Saga
+- `POST /ordens-servico/{id}/entregar` - Registrar entrega após a OS ser finalizada
+- `POST /ordens-servico/{id}/cancelar` - Solicitar cancelamento (corpo opcional `{"motivo": "..."}`; a Saga marca `CANCELADA` após as compensações)
 
-Mensageria (Fase 4)
+Execution Service
+- Catálogo, estoque, reservas e fila de execução: [README do serviço](../oficina-execution-service/README.md)
+- Inclui `GET/POST/PUT/DELETE /pecas`, reposição/alertas e endpoints de tarefa em `/tarefas`.
+
+Mensageria
 - Contratos de todos os comandos e eventos da Saga (envelope, payload, produtor, consumidor, fila e exemplo):
   `documentacao/contratos_mensagens.md`; exemplos em `src/test/resources/contratos/*.json`, verificados por
   `ContratosMensagensTest`.
-- Hoje o OS Service publica `StatusOrdemServicoAlterado` (outbox → `oficina.eventos`) a cada transição de status
-  e o consome para notificar o cliente (ADR 0010). Plataforma local (RabbitMQ, Postgres, Jaeger):
+- O OS Service publica `StatusOrdemServicoAlterado` (outbox → `oficina.eventos`) a cada transição de status
+  e o consome para notificar o cliente (ADR 0010). A topologia e contratos estão em
+  `documentacao/contratos_mensagens.md`. Plataforma local:
   `docker compose -f ../oficina-infra-k8s/local/docker-compose.yml up -d --wait`.
+
+## Saga Pattern
+
+A Saga é **orquestrada pelo OS Service**: cada evento é validado pela máquina de estados, o status/histórico
+da OS e os comandos resultantes são persistidos na mesma transação com outbox. Inbox e identificador da
+mensagem tornam o consumo idempotente. Os participantes confirmam suas compensações antes de o fluxo
+alcançar `CANCELADA`; após pagamento, o cancelamento estorna antes de liberar estoque. Em uma corrida
+entre cancelamento e conclusão do reparo, `FINALIZADA` prevalece.
+
+Escolhemos a orquestração para centralizar prazos, retries, estado e observabilidade do processo que já tem
+a OS como fonte de verdade. Isso evita lógica de coordenação espalhada pelos participantes. Veja a
+[justificativa no ADR 0005](./documentacao/adrs/0005-saga-orquestrada.md), os
+[contratos de comandos/eventos](./documentacao/contratos_mensagens.md) e os
+[diagramas de arquitetura e compensação](./documentacao/arquitetura_fase4.md).
+
+| Etapa | Mensagem/decisão | Resultado ou compensação |
+|---|---|---|
+| Abertura e diagnóstico | `SolicitarDiagnostico` → `DiagnosticoIniciado` / `DiagnosticoConcluido` | Snapshot da OS e reserva de peças |
+| Orçamento | `GerarOrcamento` → `OrcamentoGerado` → `OrcamentoAprovado` | Recusa libera a reserva e cancela a OS |
+| Cobrança | `CriarCobranca` → `CobrancaCriada` → `PagamentoConfirmado` | Rejeição/timeout cancela cobrança quando aplicável, libera reserva e cancela a OS |
+| Execução | `IniciarExecucao` → `ExecucaoIniciada` → `ExecucaoFinalizada` | Recusa estorna pagamento e libera a reserva |
+| Cancelamento manual | `CancelarExecucao` quando necessário | Confirma cancelamento, estorna, libera reserva e conclui a compensação |
 
 Exemplo de abertura de OS
 ```json
 {
   "clienteId": "cliente-1",
-  "veiculoId": "veiculo-1",
-  "itens": [
-    {
-      "descricao": "Troca de óleo",
-      "tipo": "SERVICO",
-      "valor": 80.00
-    },
-    {
-      "descricao": "Filtro de óleo",
-      "tipo": "PECA",
-      "valor": 25.00,
-      "quantidade": 2,
-      "pecaId": "peca-1"
-    }
-  ]
+  "veiculoId": "veiculo-1"
 }
 ```
 
@@ -308,10 +246,8 @@ Exemplo de resposta de orçamento
 }
 ```
 
-Pagamentos
-- `GET /pagamentos` - Listar todos
-- `POST /pagamentos` - Criar novo
-- `GET /pagamentos/{id}` - Buscar por ID
+Cobranças são atendidas pelo [Billing Service](../oficina-billing-service/README.md); não há endpoint
+de pagamento manual nem tabela de pagamento neste serviço.
 
 Testes
 
@@ -337,6 +273,14 @@ Cobertura de Testes
 - **OrdemServicoServiceTest**: Testes de serviço de OS
 - **PecaControllerTest**: Testes de controller REST
 - **ClienteControllerTest**: Testes de controller REST
+
+## Demonstração e qualidade
+
+- Collection e environment Postman: [`documentacao/postman/`](./documentacao/postman/).
+- Roteiro de apresentação (até 15 minutos): [`documentacao/roteiro_video.md`](./documentacao/roteiro_video.md).
+- O CI roda apenas testes unitários/mockados com exclusão explícita dos testes que iniciam infraestrutura.
+- SonarCloud requer que a organização/projeto seja criado e `SONAR_TOKEN` configurado nos segredos do GitHub;
+  os identificadores ficam em `sonar-project.properties`.
 
 Segurança
 

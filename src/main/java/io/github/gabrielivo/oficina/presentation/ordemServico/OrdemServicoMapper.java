@@ -1,8 +1,6 @@
 package io.github.gabrielivo.oficina.presentation.ordemServico;
 
 import io.github.gabrielivo.oficina.application.ordemServico.AbrirOrdemServicoCommand;
-import io.github.gabrielivo.oficina.application.ordemServico.AdicionarItemOSCommand;
-import io.github.gabrielivo.oficina.application.ordemServico.ItemOrdemServicoCommand;
 import io.github.gabrielivo.oficina.domain.ordemServico.HistoricoStatusOrdemServico;
 import io.github.gabrielivo.oficina.domain.ordemServico.ItemOrdemServico;
 import io.github.gabrielivo.oficina.domain.ordemServico.OrdemServico;
@@ -15,20 +13,7 @@ import org.springframework.stereotype.Component;
 public class OrdemServicoMapper {
 
     public AbrirOrdemServicoCommand toCommand(OrdemServicoRequest request) {
-        List<ItemOrdemServicoCommand> itens = request.itens() == null
-                ? List.of()
-                : request.itens().stream().map(this::toItemCommand).toList();
-        return new AbrirOrdemServicoCommand(request.clienteId(), request.veiculoId(), itens);
-    }
-
-    public AdicionarItemOSCommand toCommand(String osId, AdicionarItemOSRequest request) {
-        return new AdicionarItemOSCommand(
-                osId, request.descricao(), request.tipo(), request.valor(), request.quantidade(), request.pecaId());
-    }
-
-    private ItemOrdemServicoCommand toItemCommand(ItemOrdemServicoRequest request) {
-        return new ItemOrdemServicoCommand(
-                request.descricao(), request.tipo(), request.valor(), request.quantidade(), request.pecaId());
+        return new AbrirOrdemServicoCommand(request.clienteId(), request.veiculoId());
     }
 
     public OrdemServicoResponse toResponse(OrdemServico os) {
@@ -77,7 +62,7 @@ public class OrdemServicoMapper {
                 item.getValor(),
                 item.getQuantidade(),
                 item.getValorTotal(),
-                item.getPeca() != null ? item.getPeca().getId() : null,
-                item.getPeca() != null ? item.getPeca().getNome() : null);
+                item.getPecaId(),
+                item.getNomePeca());
     }
 }

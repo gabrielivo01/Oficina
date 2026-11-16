@@ -1,634 +1,101 @@
 package io.github.gabrielivo.oficina.application.ordemServico;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
-import io.github.gabrielivo.oficina.application.cliente.ClienteService;
-import io.github.gabrielivo.oficina.application.cliente.CriarClienteCommand;
-import io.github.gabrielivo.oficina.application.cliente.EnderecoCommand;
-import io.github.gabrielivo.oficina.application.mensageria.ContextoRastreamento;
-import io.github.gabrielivo.oficina.application.mensageria.MensageriaProperties;
-import io.github.gabrielivo.oficina.application.mensageria.OutboxService;
-import io.github.gabrielivo.oficina.application.veiculo.CriarVeiculoCommand;
-import io.github.gabrielivo.oficina.application.veiculo.VeiculoService;
 import io.github.gabrielivo.oficina.domain.cliente.Cliente;
 import io.github.gabrielivo.oficina.domain.cliente.ClienteRepository;
-import io.github.gabrielivo.oficina.domain.mensageria.MensagemOutbox;
-import io.github.gabrielivo.oficina.domain.mensageria.MensagemOutboxRepository;
-import io.github.gabrielivo.oficina.domain.ordemServico.*;
-import io.github.gabrielivo.oficina.domain.peca.Peca;
-import io.github.gabrielivo.oficina.domain.peca.PecaRepository;
+import io.github.gabrielivo.oficina.domain.ordemServico.OrdemServico;
+import io.github.gabrielivo.oficina.domain.ordemServico.OrdemServicoException;
+import io.github.gabrielivo.oficina.domain.ordemServico.OrdemServicoRepository;
 import io.github.gabrielivo.oficina.domain.veiculo.Veiculo;
 import io.github.gabrielivo.oficina.domain.veiculo.VeiculoRepository;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import java.math.BigDecimal;
-import java.util.List;
 import java.util.Optional;
-import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
-import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.Page;
-import tools.jackson.databind.json.JsonMapper;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@DataJpaTest
-@Import({
-    OrdemServicoService.class,
-    ClienteService.class,
-    VeiculoService.class,
-    PecaService.class,
-    OutboxService.class,
-    SimpleMeterRegistry.class,
-    OrdemServicoServiceTest.MensageriaTestConfig.class
-})
+@ExtendWith(MockitoExtension.class)
 class OrdemServicoServiceTest {
 
-    @TestConfiguration
-    @EnableConfigurationProperties(MensageriaProperties.class)
-    static class MensageriaTestConfig {
-        @Bean
-        JsonMapper jsonMapper() {
-            return JsonMapper.builder().build();
-        }
-
-        @Bean
-        ContextoRastreamento contextoRastreamento() {
-            return () -> "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
-        }
-    }
-
-    @Autowired
-    private MensagemOutboxRepository outboxRepository;
-
-    @Autowired
+    @Mock
     private OrdemServicoRepository ordemServicoRepository;
 
-    @Autowired
+    @Mock
     private ClienteRepository clienteRepository;
 
-    @Autowired
+    @Mock
     private VeiculoRepository veiculoRepository;
 
-    @Autowired
-    private PecaRepository pecaRepository;
+    @Mock
+    private OrquestradorSagaService orquestradorSaga;
 
-    @Autowired
-    private OrdemServicoService ordemServicoService;
+    @Mock
+    private PublicadorEventosOrdemServico publicadorStatus;
 
-    @Autowired
-    ClienteService clienteService;
+    private OrdemServicoService service;
 
-    @Autowired
-    VeiculoService veiculoService;
-
-    @Autowired
-    PecaService pecaService;
-
-    @Autowired
-    TestEntityManager entityManager;
-
-    private Cliente criarClienteTeste() {
-        var endereco = new EnderecoCommand("12345678", "Rua Teste", "123", null, "Centro", "São Paulo", "SP");
-        var cpf = "12345678901"; // CPF fixo para testes que precisam do mesmo cliente
-        try {
-            var command = new CriarClienteCommand(cpf, "Cliente Teste", "(11) 99999-9999", endereco);
-            return clienteService.criar(command);
-        } catch (Exception e) {
-            // Cliente já existe, buscar pelo CPF
-            return clienteRepository.findByCpf(cpf).orElseThrow();
-        }
-    }
-
-    private Cliente criarClienteUnico() {
-        var endereco = new EnderecoCommand("12345678", "Rua Teste", "123", null, "Centro", "São Paulo", "SP");
-        var cpf = java.util.UUID.randomUUID().toString().substring(0, 11).replace("-", ""); // CPF único
-        var command = new CriarClienteCommand(cpf, "Cliente " + cpf, "(11) 99999-9999", endereco);
-        return clienteService.criar(command);
-    }
-
-    private Veiculo criarVeiculoTeste(String clienteId) {
-        var placa = "ABC-1234"; // Placa fixa para testes que precisam do mesmo veículo
-        if (veiculoRepository.existsByPlaca(placa)) {
-            // Veículo já existe, buscar pelo cliente (assumindo que o cliente tem apenas um veículo)
-            var veiculos = veiculoRepository.findByClienteId(clienteId);
-            return veiculos.stream()
-                    .filter(v -> v.getPlaca().equals(placa))
-                    .findFirst()
-                    .orElseThrow();
-        } else {
-            var command = new CriarVeiculoCommand(clienteId, placa, "Fiat", "Uno", 2020);
-            return veiculoService.criar(command);
-        }
-    }
-
-    private Veiculo criarVeiculoUnico(String clienteId) {
-        var placa = java.util.UUID.randomUUID().toString().substring(0, 7).toUpperCase(); // Placa única
-        var command = new CriarVeiculoCommand(clienteId, placa, "Fiat", "Uno", 2020);
-        return veiculoService.criar(command);
-    }
-
-    private Peca criarPecaTeste() {
-        var command = new CriarPecaCommand("Peça Teste", "Descrição", new BigDecimal("100.00"), 10, 2);
-        return pecaService.criar(command);
+    @BeforeEach
+    void setUp() {
+        service = new OrdemServicoService(
+                ordemServicoRepository,
+                clienteRepository,
+                veiculoRepository,
+                orquestradorSaga,
+                publicadorStatus,
+                new SimpleMeterRegistry());
     }
 
     @Test
-    void deveAbrirOrdemServicoQuandoClienteEVeiculoExistem() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
+    void abrirOSIniciaSagaNaOrdemPersistida() {
+        Cliente cliente = clienteComEmail();
+        Veiculo veiculo = new Veiculo(cliente, "ABC1234", "Fiat", "Uno", 2020);
+        when(clienteRepository.findById(cliente.getId())).thenReturn(Optional.of(cliente));
+        when(veiculoRepository.findById(veiculo.getId())).thenReturn(Optional.of(veiculo));
+        when(ordemServicoRepository.save(any(OrdemServico.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var command = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
-        OrdemServico os = ordemServicoService.abrir(command);
+        OrdemServico os = service.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
 
-        assertNotNull(os.getId());
         assertEquals(cliente.getId(), os.getCliente().getId());
         assertEquals(veiculo.getId(), os.getVeiculo().getId());
-        assertEquals(StatusOrdemServico.RECEBIDA, os.getStatus());
-        assertNotNull(os.getId());
+        verify(orquestradorSaga).iniciar(os);
     }
 
     @Test
-    void deveLancarExcecaoQuandoAbrirOrdemServicoComClienteInexistente() {
-        String clienteIdInexistente = "cliente-inexistente";
-        String veiculoId = "veiculo-qualquer";
+    void abrirOSSemEmailDoClienteFalhaAntesDeConsultarVeiculo() {
+        Cliente cliente = new Cliente("11122233344", "Cliente", null, null);
+        when(clienteRepository.findById(cliente.getId())).thenReturn(Optional.of(cliente));
 
-        var command = new AbrirOrdemServicoCommand(clienteIdInexistente, veiculoId);
+        assertThrows(
+                OrdemServicoException.class,
+                () -> service.abrir(new AbrirOrdemServicoCommand(cliente.getId(), "veiculo-1")));
 
-        assertThrows(io.github.gabrielivo.oficina.domain.cliente.ClienteException.class, () -> {
-            ordemServicoService.abrir(command);
-        });
+        verifyNoInteractions(veiculoRepository, orquestradorSaga);
     }
 
     @Test
-    void deveLancarExcecaoQuandoAbrirOrdemServicoComVeiculoInexistente() {
-        Cliente cliente = criarClienteTeste();
-        String veiculoIdInexistente = "veiculo-inexistente";
+    void cancelarOSDelegaCompensacaoParaSaga() {
+        Cliente cliente = clienteComEmail();
+        Veiculo veiculo = new Veiculo(cliente, "ABC1234", "Fiat", "Uno", 2020);
+        OrdemServico os = new OrdemServico(cliente, veiculo);
+        when(ordemServicoRepository.findById(os.getId())).thenReturn(Optional.of(os));
+        when(orquestradorSaga.solicitarCancelamento(os.getId(), "Desistência")).thenReturn(os);
 
-        var command = new AbrirOrdemServicoCommand(cliente.getId(), veiculoIdInexistente);
+        assertEquals(os, service.cancelar(os.getId(), "Desistência"));
 
-        assertThrows(io.github.gabrielivo.oficina.domain.veiculo.VeiculoException.class, () -> {
-            ordemServicoService.abrir(command);
-        });
+        verify(orquestradorSaga).solicitarCancelamento(os.getId(), "Desistência");
+        verify(publicadorStatus, never()).salvarEPublicar(any());
     }
 
-    @Test
-    void deveBuscarOrdemServicoPorIdQuandoExiste() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-        var commandAbrir = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
-        OrdemServico osCriada = ordemServicoService.abrir(commandAbrir);
-
-        OrdemServico osBuscada = ordemServicoService.buscarPorId(osCriada.getId());
-
-        assertEquals(osCriada.getId(), osBuscada.getId());
-        assertEquals(cliente.getId(), osBuscada.getCliente().getId());
-        assertEquals(veiculo.getId(), osBuscada.getVeiculo().getId());
-    }
-
-    @Test
-    void deveLancarExcecaoQuandoBuscarOrdemServicoPorIdInexistente() {
-        String idInexistente = "id-inexistente";
-
-        assertThrows(OrdemServicoException.class, () -> {
-            ordemServicoService.buscarPorId(idInexistente);
-        });
-    }
-
-    @Test
-    void deveListarTodasAsOrdensServico() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-
-        // Criar duas OS
-        var command1 = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
-        ordemServicoService.abrir(command1);
-
-        var command2 = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
-        ordemServicoService.abrir(command2);
-
-        Page<OrdemServico> ordens = ordemServicoService.listar(new ListarOrdensServicoCommand(null, 0, 20));
-
-        assertNotNull(ordens);
-        assertTrue(ordens.getTotalElements() >= 2);
-    }
-
-    @Test
-    void deveListarOrdensServicoPorCliente() {
-        Cliente cliente1 = criarClienteUnico();
-        Cliente cliente2 = criarClienteUnico();
-        Veiculo veiculo1 = criarVeiculoUnico(cliente1.getId());
-        Veiculo veiculo2 = criarVeiculoUnico(cliente2.getId());
-
-        // Criar OS para cliente1
-        var command1 = new AbrirOrdemServicoCommand(cliente1.getId(), veiculo1.getId());
-        ordemServicoService.abrir(command1);
-
-        // Criar OS para cliente2
-        var command2 = new AbrirOrdemServicoCommand(cliente2.getId(), veiculo2.getId());
-        ordemServicoService.abrir(command2);
-
-        List<OrdemServico> ordensCliente1 = ordemServicoService.listarPorCliente(cliente1.getId());
-
-        assertNotNull(ordensCliente1);
-        assertEquals(1, ordensCliente1.size());
-        assertEquals(cliente1.getId(), ordensCliente1.get(0).getCliente().getId());
-    }
-
-    @Test
-    void deveListarOrdensServicoPorVeiculo() {
-        Cliente cliente = criarClienteUnico();
-        Veiculo veiculo1 = criarVeiculoUnico(cliente.getId());
-        Veiculo veiculo2 = criarVeiculoUnico(cliente.getId());
-
-        // Criar OS para veiculo1
-        var command1 = new AbrirOrdemServicoCommand(cliente.getId(), veiculo1.getId());
-        ordemServicoService.abrir(command1);
-
-        // Criar OS para veiculo2
-        var command2 = new AbrirOrdemServicoCommand(cliente.getId(), veiculo2.getId());
-        ordemServicoService.abrir(command2);
-
-        List<OrdemServico> ordensVeiculo1 = ordemServicoService.listarPorVeiculo(veiculo1.getId());
-
-        assertNotNull(ordensVeiculo1);
-        assertEquals(1, ordensVeiculo1.size());
-        assertEquals(veiculo1.getId(), ordensVeiculo1.get(0).getVeiculo().getId());
-    }
-
-    @Test
-    void deveAdicionarItemServico() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-        var commandAbrir = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
-        OrdemServico os = ordemServicoService.abrir(commandAbrir);
-
-        var commandItem = new AdicionarItemOSCommand(
-                os.getId(), "Troca de óleo", TipoItemOrdemServico.SERVICO, new BigDecimal("50.00"), null, null);
-        OrdemServico osComItem = ordemServicoService.adicionarItem(commandItem);
-
-        assertNotNull(osComItem.getItens());
-        assertEquals(1, osComItem.getItens().size());
-        var item = osComItem.getItens().get(0);
-        assertEquals("Troca de óleo", item.getDescricao());
-        assertEquals(new BigDecimal("50.00"), item.getValor());
-        assertEquals(TipoItemOrdemServico.SERVICO, item.getTipo());
-    }
-
-    @Test
-    void deveAdicionarItemPeca() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-        var commandAbrir = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
-        OrdemServico os = ordemServicoService.abrir(commandAbrir);
-
-        Peca peca = criarPecaTeste();
-
-        var commandItem = new AdicionarItemOSCommand(
-                os.getId(), "Filtro de óleo", TipoItemOrdemServico.PECA, new BigDecimal("25.00"), 2, peca.getId());
-        OrdemServico osComItem = ordemServicoService.adicionarItem(commandItem);
-
-        assertNotNull(osComItem.getItens());
-        assertEquals(1, osComItem.getItens().size());
-        var item = osComItem.getItens().get(0);
-        assertEquals("Filtro de óleo", item.getDescricao());
-        assertEquals(new BigDecimal("25.00"), item.getValor());
-        assertEquals(TipoItemOrdemServico.PECA, item.getTipo());
-        assertEquals(2, item.getQuantidade());
-        assertEquals(peca.getId(), item.getPeca().getId());
-
-        // Verificar se estoque foi reduzido
-        Optional<Peca> pecaAtualizada = pecaRepository.findById(peca.getId());
-        assertTrue(pecaAtualizada.isPresent());
-        assertEquals(8, pecaAtualizada.get().getQuantidadeEstoque()); // 10 - 2
-    }
-
-    @Test
-    void deveAbrirOrdemServicoComItensNaAbertura() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-        Peca peca = criarPecaTeste();
-
-        var itens = List.of(
-                new ItemOrdemServicoCommand(
-                        "Troca de óleo", TipoItemOrdemServico.SERVICO, new BigDecimal("50.00"), null, null),
-                new ItemOrdemServicoCommand(
-                        "Filtro de óleo", TipoItemOrdemServico.PECA, new BigDecimal("25.00"), 2, peca.getId()));
-        var command = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId(), itens);
-
-        OrdemServico os = ordemServicoService.abrir(command);
-
-        assertEquals(2, os.getItens().size());
-        assertEquals(new BigDecimal("100.00"), os.getValorTotal());
-
-        Optional<Peca> pecaAtualizada = pecaRepository.findById(peca.getId());
-        assertTrue(pecaAtualizada.isPresent());
-        assertEquals(8, pecaAtualizada.get().getQuantidadeEstoque());
-    }
-
-    @Test
-    void deveAprovarOrcamentoEAtualizarStatusParaAguardandoPagamento() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-        var commandAbrir = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
-        OrdemServico os = ordemServicoService.abrir(commandAbrir);
-
-        ordemServicoService.avancarStatus(os.getId());
-        ordemServicoService.avancarStatus(os.getId());
-
-        OrdemServico osAprovada =
-                ordemServicoService.responderOrcamento(os.getId(), true, "Cliente aprovou o orçamento");
-
-        assertEquals(StatusOrdemServico.AGUARDANDO_PAGAMENTO, osAprovada.getStatus());
-    }
-
-    @Test
-    void deveListarOrdensAtivasOrdenadasPorPrioridadeDeStatus() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-
-        OrdemServico osRecebida = abrirEAvancar(cliente, veiculo, 0);
-        OrdemServico osDiagnostico = abrirEAvancar(cliente, veiculo, 1);
-        OrdemServico osPagamento = abrirEAvancar(cliente, veiculo, 3);
-        OrdemServico osExecucao = abrirEAvancar(cliente, veiculo, 4);
-        abrirEAvancar(cliente, veiculo, 5); // FINALIZADA: fora da listagem padrão
-        OrdemServico osCancelada = abrirEAvancar(cliente, veiculo, 0);
-        ordemServicoService.cancelar(osCancelada.getId(), "teste"); // CANCELADA: fora da listagem padrão
-
-        Page<OrdemServico> ordens = ordemServicoService.listar(new ListarOrdensServicoCommand(null, 0, 20));
-
-        assertEquals(4, ordens.getTotalElements());
-        assertEquals(
-                List.of(osExecucao.getId(), osPagamento.getId(), osDiagnostico.getId(), osRecebida.getId()),
-                ordens.getContent().stream().map(OrdemServico::getId).toList());
-    }
-
-    @Test
-    void deveFiltrarListagemPorStatusEPaginar() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-        OrdemServico primeira = abrirEAvancar(cliente, veiculo, 0);
-        OrdemServico segunda = abrirEAvancar(cliente, veiculo, 0);
-        OrdemServico terceira = abrirEAvancar(cliente, veiculo, 0);
-        OrdemServico finalizada = abrirEAvancar(cliente, veiculo, 5);
-
-        Page<OrdemServico> paginaUm =
-                ordemServicoService.listar(new ListarOrdensServicoCommand(Set.of(StatusOrdemServico.RECEBIDA), 0, 2));
-        Page<OrdemServico> paginaDois =
-                ordemServicoService.listar(new ListarOrdensServicoCommand(Set.of(StatusOrdemServico.RECEBIDA), 1, 2));
-        Page<OrdemServico> finalizadas = ordemServicoService.listar(
-                new ListarOrdensServicoCommand(Set.of(StatusOrdemServico.FINALIZADA), 0, 20));
-
-        assertEquals(3, paginaUm.getTotalElements());
-        assertEquals(2, paginaUm.getTotalPages());
-        assertEquals(
-                List.of(primeira.getId(), segunda.getId()),
-                paginaUm.getContent().stream().map(OrdemServico::getId).toList());
-        assertEquals(
-                List.of(terceira.getId()),
-                paginaDois.getContent().stream().map(OrdemServico::getId).toList());
-        assertEquals(
-                List.of(finalizada.getId()),
-                finalizadas.getContent().stream().map(OrdemServico::getId).toList());
-    }
-
-    @Test
-    void devePersistirHistoricoDeStatusDaOrdemServico() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-        OrdemServico os = abrirEAvancar(cliente, veiculo, 2);
-        entityManager.flush();
-        entityManager.clear();
-
-        List<HistoricoStatusOrdemServico> historico = ordemServicoService.listarHistorico(os.getId());
-
-        assertEquals(
-                List.of(
-                        StatusOrdemServico.RECEBIDA,
-                        StatusOrdemServico.EM_DIAGNOSTICO,
-                        StatusOrdemServico.AGUARDANDO_APROVACAO),
-                historico.stream()
-                        .map(HistoricoStatusOrdemServico::getStatusNovo)
-                        .toList());
-        assertEquals(
-                List.of(1, 2, 3),
-                historico.stream()
-                        .map(HistoricoStatusOrdemServico::getSequencia)
-                        .toList());
-    }
-
-    @Test
-    void deveLancarExcecaoAoListarHistoricoDeOsInexistente() {
-        assertThrows(OrdemServicoException.class, () -> ordemServicoService.listarHistorico("inexistente"));
-    }
-
-    @Test
-    void deveCancelarOrdemServicoERegistrarHistorico() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-        OrdemServico os = abrirEAvancar(cliente, veiculo, 1);
-
-        OrdemServico cancelada = ordemServicoService.cancelar(os.getId(), "Cliente desistiu");
-        entityManager.flush();
-        entityManager.clear();
-
-        assertEquals(StatusOrdemServico.CANCELADA, cancelada.getStatus());
-        HistoricoStatusOrdemServico ultimo =
-                ordemServicoService.listarHistorico(os.getId()).getLast();
-        assertEquals(StatusOrdemServico.EM_DIAGNOSTICO, ultimo.getStatusAnterior());
-        assertEquals(StatusOrdemServico.CANCELADA, ultimo.getStatusNovo());
-        assertEquals(OrigemMudancaStatus.USUARIO, ultimo.getOrigem());
-        assertEquals("Cliente desistiu", ultimo.getMotivo());
-    }
-
-    private List<MensagemOutbox> outboxDaOs(String osId) {
-        return outboxRepository.findAll().stream()
-                .filter(m -> m.getPayload().contains("\"osId\":\"" + osId + "\""))
-                .sorted(java.util.Comparator.comparing(MensagemOutbox::getCriadoEm))
-                .toList();
-    }
-
-    @Test
-    void deveGravarUmEventoNoOutboxPorTransicaoNaMesmaTransacao() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-        OrdemServico os = abrirEAvancar(cliente, veiculo, 0);
-        assertTrue(outboxDaOs(os.getId()).isEmpty(), "abertura não publica evento");
-
-        ordemServicoService.avancarStatus(os.getId());
-        ordemServicoService.cancelar(os.getId(), "Cliente desistiu");
-
-        List<MensagemOutbox> mensagens = outboxDaOs(os.getId());
-        assertEquals(2, mensagens.size());
-        assertTrue(mensagens.stream()
-                .allMatch(m -> m.getTipo().equals("StatusOrdemServicoAlterado")
-                        && m.getExchange().equals("oficina.eventos")
-                        && m.getRoutingKey().equals("os.status-alterado")
-                        && !m.isEnviada()));
-        assertTrue(mensagens.get(0).getPayload().contains("\"statusNovo\":\"EM_DIAGNOSTICO\""));
-        assertTrue(mensagens.get(1).getPayload().contains("\"statusNovo\":\"CANCELADA\""));
-        assertTrue(mensagens.get(1).getPayload().contains("\"motivo\":\"Cliente desistiu\""));
-        assertTrue(mensagens
-                .get(1)
-                .getPayload()
-                .contains("\"messageId\":\"" + mensagens.get(1).getId() + "\""));
-        assertEquals(
-                "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
-                mensagens.get(1).getTraceParent());
-    }
-
-    @Test
-    void naoDeveGravarEventoQuandoOrcamentoRecusadoNaoMudaStatus() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-        OrdemServico os = abrirEAvancar(cliente, veiculo, 2);
-        int antes = outboxDaOs(os.getId()).size();
-
-        ordemServicoService.responderOrcamento(os.getId(), false, "Caro demais");
-
-        assertEquals(antes, outboxDaOs(os.getId()).size());
-    }
-
-    private OrdemServico abrirEAvancar(Cliente cliente, Veiculo veiculo, int avancos) {
-        OrdemServico os = ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
-        for (int i = 0; i < avancos; i++) {
-            os = ordemServicoService.avancarStatus(os.getId());
-        }
-        return os;
-    }
-
-    @Test
-    void deveLancarExcecaoQuandoAdicionarItemPecaSemPecaId() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-        var commandAbrir = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
-        OrdemServico os = ordemServicoService.abrir(commandAbrir);
-
-        var commandItem = new AdicionarItemOSCommand(
-                os.getId(), "Filtro", TipoItemOrdemServico.PECA, new BigDecimal("25.00"), 1, null);
-
-        assertThrows(OrdemServicoException.class, () -> {
-            ordemServicoService.adicionarItem(commandItem);
-        });
-    }
-
-    @Test
-    void deveRemoverItemDaOrdemServico() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-        var commandAbrir = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
-        OrdemServico os = ordemServicoService.abrir(commandAbrir);
-
-        var commandItem = new AdicionarItemOSCommand(
-                os.getId(), "Troca de óleo", TipoItemOrdemServico.SERVICO, new BigDecimal("50.00"), null, null);
-        OrdemServico osComItem = ordemServicoService.adicionarItem(commandItem);
-
-        String itemId = osComItem.getItens().get(0).getId();
-
-        OrdemServico osSemItem = ordemServicoService.removerItem(os.getId(), itemId);
-
-        assertNotNull(osSemItem.getItens());
-        assertEquals(0, osSemItem.getItens().size());
-    }
-
-    @Test
-    void deveAvancarStatusDaOrdemServico() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-        var commandAbrir = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
-        OrdemServico os = ordemServicoService.abrir(commandAbrir);
-
-        assertEquals(StatusOrdemServico.RECEBIDA, os.getStatus());
-
-        OrdemServico osAvancada = ordemServicoService.avancarStatus(os.getId());
-
-        assertEquals(StatusOrdemServico.EM_DIAGNOSTICO, osAvancada.getStatus());
-    }
-
-    @Test
-    void deveRestaurarEstoqueQuandoRemoverItemPeca() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-        var commandAbrir = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
-        OrdemServico os = ordemServicoService.abrir(commandAbrir);
-
-        Peca peca = criarPecaTeste();
-        int estoqueInicial = peca.getQuantidadeEstoque(); // 10
-
-        // Adicionar item peça (reduz estoque)
-        var commandItem = new AdicionarItemOSCommand(
-                os.getId(), "Filtro de óleo", TipoItemOrdemServico.PECA, new BigDecimal("25.00"), 2, peca.getId());
-        OrdemServico osComItem = ordemServicoService.adicionarItem(commandItem);
-
-        // Verificar que estoque foi reduzido
-        Optional<Peca> pecaAposAdicao = pecaRepository.findById(peca.getId());
-        assertTrue(pecaAposAdicao.isPresent());
-        assertEquals(estoqueInicial - 2, pecaAposAdicao.get().getQuantidadeEstoque()); // 8
-
-        // Remover item peça (restaura estoque)
-        String itemId = osComItem.getItens().get(0).getId();
-        OrdemServico osSemItem = ordemServicoService.removerItem(os.getId(), itemId);
-
-        // Verificar que estoque foi restaurado
-        Optional<Peca> pecaAposRemocao = pecaRepository.findById(peca.getId());
-        assertTrue(pecaAposRemocao.isPresent());
-        assertEquals(estoqueInicial, pecaAposRemocao.get().getQuantidadeEstoque()); // 10
-    }
-
-    @Test
-    void deveRestaurarEstoqueQuandoCancelarOrdemServico() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-        var commandAbrir = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
-        OrdemServico os = ordemServicoService.abrir(commandAbrir);
-
-        Peca peca = criarPecaTeste();
-        int estoqueInicial = peca.getQuantidadeEstoque(); // 10
-
-        // Adicionar item peça (reduz estoque)
-        var commandItem = new AdicionarItemOSCommand(
-                os.getId(), "Filtro de óleo", TipoItemOrdemServico.PECA, new BigDecimal("25.00"), 3, peca.getId());
-        ordemServicoService.adicionarItem(commandItem);
-
-        // Verificar que estoque foi reduzido
-        Optional<Peca> pecaAposAdicao = pecaRepository.findById(peca.getId());
-        assertTrue(pecaAposAdicao.isPresent());
-        assertEquals(estoqueInicial - 3, pecaAposAdicao.get().getQuantidadeEstoque()); // 7
-
-        // Cancelar ordem de serviço (restaura estoque)
-        OrdemServico osCancelada = ordemServicoService.cancelar(os.getId(), null);
-
-        // Verificar que itens foram removidos
-        assertTrue(osCancelada.getItens().isEmpty());
-
-        // Verificar que estoque foi restaurado
-        Optional<Peca> pecaAposCancelamento = pecaRepository.findById(peca.getId());
-        assertTrue(pecaAposCancelamento.isPresent());
-        assertEquals(estoqueInicial, pecaAposCancelamento.get().getQuantidadeEstoque()); // 10
-    }
-
-    @Test
-    void deveLancarExcecaoQuandoCancelarOrdemServicoFinalizada() {
-        Cliente cliente = criarClienteTeste();
-        Veiculo veiculo = criarVeiculoTeste(cliente.getId());
-        var commandAbrir = new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId());
-        OrdemServico os = ordemServicoService.abrir(commandAbrir);
-
-        // Avançar status até FINALIZADA
-        ordemServicoService.avancarStatus(os.getId()); // EM_DIAGNOSTICO
-        ordemServicoService.avancarStatus(os.getId()); // AGUARDANDO_APROVACAO
-        ordemServicoService.avancarStatus(os.getId()); // AGUARDANDO_PAGAMENTO
-        ordemServicoService.avancarStatus(os.getId()); // EM_EXECUCAO
-        OrdemServico osFinalizada = ordemServicoService.avancarStatus(os.getId()); // FINALIZADA
-
-        assertEquals(StatusOrdemServico.FINALIZADA, osFinalizada.getStatus());
-
-        // Tentar cancelar deve lançar exceção
-        assertThrows(OrdemServicoException.class, () -> {
-            ordemServicoService.cancelar(os.getId(), "tarde demais");
-        });
+    private Cliente clienteComEmail() {
+        return new Cliente("11122233344", "Cliente", "11999999999", "cliente@example.com", null);
     }
 }

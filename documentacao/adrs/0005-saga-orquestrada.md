@@ -38,7 +38,10 @@ da OS, `etapaAtual`, `situacao` (`EM_ANDAMENTO` | `COMPENSANDO` |
     → `LiberarReservaPecas` → OS `CANCELADA`;
   - execução recusada → `EstornarPagamento` → `LiberarReservaPecas` → OS
     `CANCELADA`;
-  - cancelamento manual da OS dispara a compensação da etapa atual.
+  - cancelamento manual da OS dispara a compensação da etapa atual; se o reparo
+    já começou, `CancelarExecucao` interrompe a tarefa e devolve as peças ao
+    estoque antes de `EstornarPagamento`. Se o reparo já terminou, prevalece
+    `ExecucaoFinalizada` e a OS segue para `FINALIZADA`.
 - **Timeouts:** job agendado procura sagas com `prazoExpiracao` vencido
   (ex.: pagamento não confirmado em 30 min, configurável) e dispara a
   compensação.

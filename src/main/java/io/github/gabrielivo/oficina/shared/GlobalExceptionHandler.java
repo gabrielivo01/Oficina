@@ -2,8 +2,6 @@ package io.github.gabrielivo.oficina.shared;
 
 import io.github.gabrielivo.oficina.domain.cliente.ClienteException;
 import io.github.gabrielivo.oficina.domain.ordemServico.OrdemServicoException;
-import io.github.gabrielivo.oficina.domain.pagamento.PagamentoException;
-import io.github.gabrielivo.oficina.domain.peca.PecaException;
 import io.github.gabrielivo.oficina.domain.usuario.UsuarioException;
 import io.github.gabrielivo.oficina.domain.veiculo.VeiculoException;
 import java.util.Map;
@@ -40,16 +38,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(OrdemServicoException.class)
     public ResponseEntity<Map<String, String>> handleOS(OrdemServicoException ex) {
-        return ResponseEntity.unprocessableEntity().body(Map.of("erro", ex.getMessage()));
-    }
-
-    @ExceptionHandler(PecaException.class)
-    public ResponseEntity<Map<String, String>> handlePeca(PecaException ex) {
-        return ResponseEntity.unprocessableEntity().body(Map.of("erro", ex.getMessage()));
-    }
-
-    @ExceptionHandler(PagamentoException.class)
-    public ResponseEntity<Map<String, String>> handlePagamento(PagamentoException ex) {
         return ResponseEntity.unprocessableEntity().body(Map.of("erro", ex.getMessage()));
     }
 

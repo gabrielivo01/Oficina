@@ -23,10 +23,8 @@ Usar **MongoDB** (Spring Data MongoDB) no Billing Service.
   `CANCELADA` | `ESTORNADA`), link de pagamento.
 - Outbox e inbox como coleções (inbox com índice único em `messageId`).
 - Índices criados de forma versionada.
-- A forma de garantir atomicidade entre a mudança de estado e o outbox
-  (transação Mongo com replica set de 1 nó **ou** evento gravado dentro do
-  próprio documento) será decidida e justificada num ADR do repositório
-  `oficina-billing-service` (Etapa 4.1).
+- A atomicidade entre a mudança de estado e o outbox usa transações MongoDB
+  com replica set `rs0` de um nó; a justificativa está no ADR 0012.
 
 ## Alternativas consideradas
 

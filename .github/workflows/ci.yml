@@ -1,4 +1,4 @@
-name: CI - Build and Test
+name: CI
 
 on:
   push:
@@ -7,7 +7,8 @@ on:
   pull_request:
 
 jobs:
-  build-test:
+  ci-quality:
+    name: CI quality and unit tests
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -23,9 +24,25 @@ jobs:
           java-version: "21"
           cache: maven
 
-      # verify = testes + ArchUnit + spotless:check + jacoco:check
+      # Unitários/mockados apenas; testes de integração não iniciam containers automaticamente.
       - name: Build, tests and quality checks
-        run: ./mvnw -q clean verify
+        run: ./mvnw -q clean -Dtest='*Test,!*IntegracaoTest,!MigracoesPostgresTest,!TopologiaRabbitMqSincronizadaTest' verify
+
+      - name: SonarCloud analysis and quality gate
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.qualitygate.wait=true
+
+      - name: Upload Cucumber report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cucumber-saga-report
+          path: target/cucumber-reports/
+          if-no-files-found: warn
 
       - name: Build Docker image
         run: docker build -t oficina:ci-${{ github.sha }} .

@@ -2,4 +2,5 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: oficina-postgres
+  namespace: oficina
 $patch: delete

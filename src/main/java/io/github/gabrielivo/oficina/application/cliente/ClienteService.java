@@ -18,8 +18,8 @@ public class ClienteService {
     public Cliente criar(CriarClienteCommand command) {
         validarCpfDisponivel(command.cpf());
 
-        Cliente cliente =
-                new Cliente(command.cpf(), command.nome(), command.telefone(), criarEndereco(command.endereco()));
+        Cliente cliente = new Cliente(
+                command.cpf(), command.nome(), command.telefone(), command.email(), criarEndereco(command.endereco()));
 
         return clienteRepository.save(cliente);
     }
@@ -37,7 +37,7 @@ public class ClienteService {
     @Transactional
     public Cliente atualizar(String id, AtualizarClienteCommand command) {
         Cliente cliente = buscarPorId(id);
-        cliente.atualizar(command.nome(), command.telefone(), criarEndereco(command.endereco()));
+        cliente.atualizar(command.nome(), command.telefone(), command.email(), criarEndereco(command.endereco()));
         return clienteRepository.save(cliente);
     }
 

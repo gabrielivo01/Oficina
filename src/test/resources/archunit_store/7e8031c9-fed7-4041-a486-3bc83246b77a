@@ -1,7 +1,0 @@
-io.github.gabrielivo.oficina.presentation.peca.PecaController.alertasEstoqueBaixo() expõe a entidade io.github.gabrielivo.oficina.domain.peca.Peca em (PecaController.java:71)
-io.github.gabrielivo.oficina.presentation.peca.PecaController.alertasEstoqueCritico() expõe a entidade io.github.gabrielivo.oficina.domain.peca.Peca em (PecaController.java:76)
-io.github.gabrielivo.oficina.presentation.peca.PecaController.atualizar(java.lang.String, io.github.gabrielivo.oficina.presentation.peca.AtualizarPecaRequest) expõe a entidade io.github.gabrielivo.oficina.domain.peca.Peca em (PecaController.java:46)
-io.github.gabrielivo.oficina.presentation.peca.PecaController.buscar(java.lang.String) expõe a entidade io.github.gabrielivo.oficina.domain.peca.Peca em (PecaController.java:41)
-io.github.gabrielivo.oficina.presentation.peca.PecaController.criar(io.github.gabrielivo.oficina.presentation.peca.CriarPecaRequest) expõe a entidade io.github.gabrielivo.oficina.domain.peca.Peca em (PecaController.java:23)
-io.github.gabrielivo.oficina.presentation.peca.PecaController.listar() expõe a entidade io.github.gabrielivo.oficina.domain.peca.Peca em (PecaController.java:36)
-io.github.gabrielivo.oficina.presentation.peca.PecaController.reporEstoque(java.lang.String, int) expõe a entidade io.github.gabrielivo.oficina.domain.peca.Peca em (PecaController.java:65)

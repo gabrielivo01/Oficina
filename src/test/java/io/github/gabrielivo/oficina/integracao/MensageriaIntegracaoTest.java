@@ -1,10 +1,8 @@
 package io.github.gabrielivo.oficina.integracao;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
@@ -17,7 +15,6 @@ import io.github.gabrielivo.oficina.application.ordemServico.AbrirOrdemServicoCo
 import io.github.gabrielivo.oficina.application.ordemServico.OrdemServicoService;
 import io.github.gabrielivo.oficina.domain.cliente.Cliente;
 import io.github.gabrielivo.oficina.domain.cliente.ClienteRepository;
-import io.github.gabrielivo.oficina.domain.mensageria.MensagemOutbox;
 import io.github.gabrielivo.oficina.domain.mensageria.MensagemOutboxRepository;
 import io.github.gabrielivo.oficina.domain.mensageria.MensagemProcessadaRepository;
 import io.github.gabrielivo.oficina.domain.ordemServico.OrdemServico;
@@ -26,7 +23,6 @@ import io.github.gabrielivo.oficina.domain.veiculo.Veiculo;
 import io.github.gabrielivo.oficina.domain.veiculo.VeiculoRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Message;
@@ -64,7 +60,7 @@ class MensageriaIntegracaoTest extends IntegracaoTestBase {
     private PublicadorMensagens publicador;
 
     private OrdemServico abrirOs(String cpf, String placa) {
-        Cliente cliente = clienteRepository.save(new Cliente(cpf, "Cliente " + cpf, null, null));
+        Cliente cliente = clienteRepository.save(new Cliente(cpf, "Cliente " + cpf, null, "cliente@example.com", null));
         Veiculo veiculo = veiculoRepository.save(new Veiculo(cliente, placa, "Fiat", "Uno", 2020));
         return ordemServicoService.abrir(new AbrirOrdemServicoCommand(cliente.getId(), veiculo.getId()));
     }
@@ -84,29 +80,6 @@ class MensageriaIntegracaoTest extends IntegracaoTestBase {
                 "oficina.eventos",
                 "os.status-alterado",
                 new Message(corpo.getBytes(StandardCharsets.UTF_8), propriedades));
-    }
-
-    @Test
-    void mudancaDeStatusGravadaNoOutboxChegaAFilaEENotificaOClienteAposOCommit() {
-        OrdemServico os = abrirOs("39053344705", "MSG1A11");
-
-        ordemServicoService.avancarStatus(os.getId());
-
-        List<MensagemOutbox> doOutbox = outboxRepository.findAll().stream()
-                .filter(m -> m.getPayload().contains(os.getId()))
-                .toList();
-        assertThat(doOutbox).singleElement().satisfies(m -> {
-            assertThat(m.getTipo()).isEqualTo("StatusOrdemServicoAlterado");
-            assertThat(m.getExchange()).isEqualTo("oficina.eventos");
-            assertThat(m.getRoutingKey()).isEqualTo("os.status-alterado");
-        });
-        String messageId = doOutbox.getFirst().getId();
-
-        await().atMost(ESPERA)
-                .until(() -> outboxRepository.findById(messageId).orElseThrow().isEnviada());
-        verify(statusNotificationPort, timeout(ESPERA.toMillis()))
-                .enviarAtualizacao(eq(os.getId()), eq(StatusOrdemServico.EM_DIAGNOSTICO), contains("RECEBIDA"));
-        await().atMost(ESPERA).until(() -> inboxRepository.existsById(messageId));
     }
 
     @Test

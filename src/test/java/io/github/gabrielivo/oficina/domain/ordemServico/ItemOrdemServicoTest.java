@@ -23,18 +23,28 @@ class ItemOrdemServicoTest {
     }
 
     @Test
-    void deveCalcularValorTotalParaPecaComQuantidadeMaiorQueUm() {
+    void deveManterSnapshotDePecaSemDependenciaDoCatalogo() {
         Cliente cliente = new Cliente("11122233344", "Gabriel", null, null);
         Veiculo veiculo = new Veiculo(cliente, "ABC1234", "Fiat", "Uno", 2020);
         OrdemServico os = new OrdemServico(cliente, veiculo);
-        var peca = new io.github.gabrielivo.oficina.domain.peca.Peca(
-                "Filtro", "Filtro de óleo", new BigDecimal("25.00"), 10);
-
-        ItemOrdemServico item = new ItemOrdemServico(os, "Filtro de óleo", new BigDecimal("25.00"), 2, peca);
+        ItemOrdemServico item =
+                new ItemOrdemServico(os, "Filtro de óleo", new BigDecimal("25.00"), 2, "peca-1", "Filtro de óleo");
 
         assertEquals(new BigDecimal("50.00"), item.getValorTotal());
         assertEquals(TipoItemOrdemServico.PECA, item.getTipo());
         assertEquals(2, item.getQuantidade());
-        assertEquals(peca, item.getPeca());
+        assertEquals("peca-1", item.getPecaId());
+        assertEquals("Filtro de óleo", item.getNomePeca());
+    }
+
+    @Test
+    void deveExigirNomeDaPecaParaManterSnapshot() {
+        Cliente cliente = new Cliente("11122233344", "Gabriel", null, null);
+        Veiculo veiculo = new Veiculo(cliente, "ABC1234", "Fiat", "Uno", 2020);
+        OrdemServico os = new OrdemServico(cliente, veiculo);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new ItemOrdemServico(os, "Filtro de óleo", new BigDecimal("25.00"), 1, "peca-1", " "));
     }
 }

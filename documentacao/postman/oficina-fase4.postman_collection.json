@@ -1,0 +1,312 @@
+{
+  "info": {
+    "_postman_id": "d4a26659-91df-4dca-b8af-f6f601c3b4e5",
+    "name": "Oficina - Fase 4",
+    "description": "Fluxos REST da OS, Execution e Billing. Requer os três serviços e RabbitMQ/Mongo/Postgres disponíveis. Use somente dados descartáveis e gateway fake no ambiente local.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "osBaseUrl", "value": "http://localhost:8080" },
+    { "key": "executionBaseUrl", "value": "http://localhost:8081" },
+    { "key": "billingBaseUrl", "value": "http://localhost:8082" },
+    { "key": "token", "value": "" },
+    { "key": "clienteId", "value": "" },
+    { "key": "veiculoId", "value": "" },
+    { "key": "osId", "value": "" },
+    { "key": "tarefaId", "value": "" },
+    { "key": "orcamentoId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "OS Service",
+      "item": [
+        {
+          "name": "Login de usuário",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.token) pm.environment.set('token', body.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"login\": \"admin\",\n  \"senha\": \"admin123\"\n}" },
+            "url": "{{osBaseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Cadastrar cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id) pm.environment.set('clienteId', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"cpf\": \"52998224725\",\n  \"nome\": \"Maria Souza\",\n  \"telefone\": \"11999999999\",\n  \"email\": \"maria@example.com\"\n}" },
+            "url": "{{osBaseUrl}}/clientes"
+          }
+        },
+        {
+          "name": "Cadastrar veículo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id) pm.environment.set('veiculoId', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"clienteId\": \"{{clienteId}}\",\n  \"placa\": \"ABC1D23\",\n  \"marca\": \"Fiat\",\n  \"modelo\": \"Uno\",\n  \"ano\": 2020\n}" },
+            "url": "{{osBaseUrl}}/veiculos"
+          }
+        },
+        {
+          "name": "Abrir OS",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id) pm.environment.set('osId', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"clienteId\": \"{{clienteId}}\",\n  \"veiculoId\": \"{{veiculoId}}\"\n}" },
+            "url": "{{osBaseUrl}}/ordens-servico"
+          }
+        },
+        {
+          "name": "Consultar Saga",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{osBaseUrl}}/ordens-servico/{{osId}}/saga"
+          }
+        },
+        {
+          "name": "Consultar histórico da OS",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{osBaseUrl}}/ordens-servico/{{osId}}/historico"
+          }
+        },
+        {
+          "name": "Registrar entrega",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{osBaseUrl}}/ordens-servico/{{osId}}/entregar"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Execution Service (ações do mecânico)",
+      "item": [
+        {
+          "name": "Listar tarefas em fila",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const osId = pm.environment.get('osId');",
+                  "  const tarefas = pm.response.json();",
+                  "  const tarefa = tarefas.find(item => item.osId === osId && item.tipo === 'DIAGNOSTICO');",
+                  "  if (tarefa) pm.environment.set('tarefaId', tarefa.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{executionBaseUrl}}/tarefas?status=NA_FILA"
+          }
+        },
+        {
+          "name": "Iniciar diagnóstico (informar tarefaId retornado pela fila)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{executionBaseUrl}}/tarefas/{{tarefaId}}/iniciar-diagnostico"
+          }
+        },
+        {
+          "name": "Concluir diagnóstico (ajuste IDs e itens)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"itens\": [\n    {\n      \"tipo\": \"SERVICO\",\n      \"descricao\": \"Revisão\",\n      \"valorUnitario\": 100.00,\n      \"quantidade\": 1\n    }\n  ]\n}" },
+            "url": "{{executionBaseUrl}}/tarefas/{{tarefaId}}/diagnostico/concluir"
+          }
+        },
+        {
+          "name": "Listar tarefas de reparo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const osId = pm.environment.get('osId');",
+                  "  const tarefas = pm.response.json();",
+                  "  const tarefa = tarefas.find(item => item.osId === osId && item.tipo === 'REPARO');",
+                  "  if (tarefa) pm.environment.set('tarefaId', tarefa.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{executionBaseUrl}}/tarefas?status=NA_FILA"
+          }
+        },
+        {
+          "name": "Finalizar reparo",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{executionBaseUrl}}/tarefas/{{tarefaId}}/finalizar"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Billing Service",
+      "item": [
+        {
+          "name": "Consultar orçamento da OS",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id) pm.environment.set('orcamentoId', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{billingBaseUrl}}/orcamentos/{{osId}}"
+          }
+        },
+        {
+          "name": "Responder orçamento (aprovar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"aprovado\": true,\n  \"observacao\": \"Aprovado para execução\"\n}" },
+            "url": "{{billingBaseUrl}}/orcamentos/{{orcamentoId}}/resposta"
+          }
+        },
+        {
+          "name": "Simular pagamento aprovado (gateway fake/local)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"APROVADO\"\n}" },
+            "url": "{{billingBaseUrl}}/cobrancas/{{osId}}/simular-pagamento"
+          }
+        },
+        {
+          "name": "Consultar cobrança",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{billingBaseUrl}}/cobrancas/{{osId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Status OS",
+      "item": [
+        {
+          "name": "Consultar status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{osBaseUrl}}/ordens-servico/{{osId}}/status"
+          }
+        },
+        {
+          "name": "Consultar OS",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{osBaseUrl}}/ordens-servico/{{osId}}"
+          }
+        }
+      ]
+    }
+  ]
+}

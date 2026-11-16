@@ -9,7 +9,8 @@
       "id": "1a95441a-321b-428e-913a-d44a4033ad81",
       "nome": "Maria Souza",
       "cpf": "52998224725",
-      "telefone": "11999999999"
+      "telefone": "11999999999",
+      "email": "maria.souza@example.com"
     },
     "veiculo": {
       "placa": "ABC1D23",

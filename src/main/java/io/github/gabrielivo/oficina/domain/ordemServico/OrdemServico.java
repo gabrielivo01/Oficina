@@ -96,32 +96,11 @@ public class OrdemServico {
         return eventos;
     }
 
-    public void avancarStatus() {
-        alterarStatus(this.status.proximoStatus(), OrigemMudancaStatus.USUARIO, "Avanço manual de status");
-    }
-
-    /** Orçamento aprovado: a OS passa a aguardar o pagamento, que é cobrado antes da execução. */
-    public void aprovarOrcamento() {
-        validarStatusParaRespostaOrcamento();
-        alterarStatus(StatusOrdemServico.AGUARDANDO_PAGAMENTO, OrigemMudancaStatus.USUARIO, "Orçamento aprovado");
-    }
-
-    /**
-     * Recusa ainda sem efeito de status (a compensação que cancela a OS vem com a Saga, Fase 5): só renova
-     * {@code statusDesde}. Como o status não muda, não há linha de histórico.
-     */
-    public void recusarOrcamento() {
-        validarStatusParaRespostaOrcamento();
-        LocalDateTime agora = LocalDateTime.now();
-        this.atualizadoEm = agora;
-        this.statusDesde = agora;
-    }
-
-    public void atualizarStatusExterno(StatusOrdemServico novoStatus) {
-        if (novoStatus == null) {
-            throw new OrdemServicoException("Status é obrigatório.");
+    public void entregar() {
+        if (this.status != StatusOrdemServico.FINALIZADA) {
+            throw new OrdemServicoException("Somente uma OS finalizada pode ser entregue.");
         }
-        alterarStatus(novoStatus, OrigemMudancaStatus.SISTEMA, "Status atualizado via integração externa");
+        alterarStatus(StatusOrdemServico.ENTREGUE, OrigemMudancaStatus.USUARIO, "Entrega ao cliente");
     }
 
     /** Cancela a OS; permitido em qualquer status antes de FINALIZADA. */
@@ -141,24 +120,22 @@ public class OrdemServico {
                 this, this.historico.size() + 1, anterior, this.status, quando, origem, motivo));
     }
 
-    public void limparItens() {
-        this.itens.clear();
-        recalcularTotal();
-        this.atualizadoEm = LocalDateTime.now();
-    }
-
-    public void adicionarItem(ItemOrdemServico item) {
-        validarAlteracaoDeItens();
-        this.itens.add(item);
-        recalcularTotal();
-        marcarAtualizacao();
-    }
-
-    public void removerItem(String itemId) {
-        boolean removido = this.itens.removeIf(i -> i.getId().equals(itemId));
-        if (!removido) {
-            throw new OrdemServicoException("Item não encontrado na OS: " + itemId);
+    public void registrarSnapshotDiagnostico(List<ItemOrdemServico> itens) {
+        if (this.status != StatusOrdemServico.EM_DIAGNOSTICO) {
+            throw new OrdemServicoException("Os itens do diagnóstico só podem ser registrados durante o diagnóstico.");
         }
+        if (!this.itens.isEmpty()) {
+            throw new OrdemServicoException("O snapshot do diagnóstico é imutável depois de registrado.");
+        }
+        if (itens == null || itens.isEmpty()) {
+            throw new OrdemServicoException("O diagnóstico deve conter pelo menos um item.");
+        }
+        for (ItemOrdemServico item : itens) {
+            if (item.getOrdemServico() != this) {
+                throw new OrdemServicoException("Todos os itens do snapshot devem pertencer à OS.");
+            }
+        }
+        this.itens.addAll(itens);
         recalcularTotal();
         marcarAtualizacao();
     }
@@ -170,20 +147,6 @@ public class OrdemServico {
     private void validarTransicaoPara(StatusOrdemServico proximoStatus) {
         if (proximoStatus == null || !this.status.podeTransicionarPara(proximoStatus)) {
             throw new OrdemServicoException("Transição inválida de " + this.status + " para " + proximoStatus);
-        }
-    }
-
-    private void validarStatusParaRespostaOrcamento() {
-        if (this.status != StatusOrdemServico.AGUARDANDO_APROVACAO) {
-            throw new OrdemServicoException(
-                    "A aprovação de orçamento só é permitida quando a OS está aguardando aprovação.");
-        }
-    }
-
-    private void validarAlteracaoDeItens() {
-        if (!this.status.isAtivo()) {
-            throw new OrdemServicoException(
-                    "Não é possível alterar itens em uma OS finalizada, entregue ou cancelada.");
         }
     }
 
