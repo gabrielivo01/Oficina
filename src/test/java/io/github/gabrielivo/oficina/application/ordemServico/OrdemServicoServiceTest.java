@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import io.github.gabrielivo.oficina.application.cliente.ClienteService;
 import io.github.gabrielivo.oficina.application.cliente.CriarClienteCommand;
 import io.github.gabrielivo.oficina.application.cliente.EnderecoCommand;
+import io.github.gabrielivo.oficina.application.mensageria.ContextoRastreamento;
 import io.github.gabrielivo.oficina.application.mensageria.MensageriaProperties;
 import io.github.gabrielivo.oficina.application.mensageria.OutboxService;
 import io.github.gabrielivo.oficina.application.veiculo.CriarVeiculoCommand;
@@ -52,6 +53,11 @@ class OrdemServicoServiceTest {
         @Bean
         JsonMapper jsonMapper() {
             return JsonMapper.builder().build();
+        }
+
+        @Bean
+        ContextoRastreamento contextoRastreamento() {
+            return () -> "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
         }
     }
 
@@ -469,6 +475,9 @@ class OrdemServicoServiceTest {
                 .get(1)
                 .getPayload()
                 .contains("\"messageId\":\"" + mensagens.get(1).getId() + "\""));
+        assertEquals(
+                "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+                mensagens.get(1).getTraceParent());
     }
 
     @Test

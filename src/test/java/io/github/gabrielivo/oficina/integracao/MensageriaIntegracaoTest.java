@@ -145,7 +145,7 @@ class MensageriaIntegracaoTest extends IntegracaoTestBase {
     @Test
     void publicacaoNaoRoteavelFalhaEmVezDeSerDadaComoEnviada() {
         MensagemPublicavel semDestino = new MensagemPublicavel(
-                UUID.randomUUID().toString(), "Teste", "oficina.comandos", "fila.que.nao.existe", "{}");
+                UUID.randomUUID().toString(), "Teste", "oficina.comandos", "fila.que.nao.existe", "{}", null);
 
         assertThrows(FalhaPublicacaoException.class, () -> publicador.publicar(semDestino));
     }

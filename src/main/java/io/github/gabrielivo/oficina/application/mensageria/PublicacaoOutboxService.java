@@ -54,7 +54,8 @@ public class PublicacaoOutboxService {
                         mensagem.getTipo(),
                         mensagem.getExchange(),
                         mensagem.getRoutingKey(),
-                        mensagem.getPayload()));
+                        mensagem.getPayload(),
+                        mensagem.getTraceParent()));
             } catch (RuntimeException e) {
                 falhas.increment();
                 outboxService.registrarFalha(mensagem.getId(), e.getMessage());

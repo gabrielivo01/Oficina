@@ -59,6 +59,11 @@
 			<artifactId>micrometer-registry-prometheus</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+		<!-- Tracing distribuído: starter oficial do Boot 4 (Micrometer Tracing + bridge OTel + exportador OTLP) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-opentelemetry</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>net.logstash.logback</groupId>
 			<artifactId>logstash-logback-encoder</artifactId>
@@ -154,6 +159,13 @@
 			<artifactId>testcontainers-rabbitmq</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- @AutoConfigureTracing: o Boot desliga a propagação de trace nos testes por padrão; o teste de aceite do
+		     tracing (HTTP -> outbox -> AMQP num único trace) precisa dela ligada -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-opentelemetry-test</artifactId>
+			<scope>test</scope>
+		</dependency>
 		<!-- Espera assíncrona nos testes de mensageria (mensagem chega/é consumida) sem sleep fixo -->
 		<dependency>
 			<groupId>org.awaitility</groupId>
@@ -234,7 +246,7 @@
 							<goal>report</goal>
 						</goals>
 					</execution>
-					<!-- Medido em 2026-11-15: LINE 86,61%. Limite ~2 p.p. abaixo para impedir regressão.
+					<!-- Medido em 2026-11-15 (Fase 2, etapa 2.5): LINE 91,5%. Limite ~2 p.p. abaixo para impedir regressão.
 					     Meta da Fase 6.2: 0.80 em todos os serviços (já atendida aqui). Só suba, nunca desça. -->
 					<execution>
 						<id>check</id>
@@ -249,7 +261,7 @@
 										<limit>
 											<counter>LINE</counter>
 											<value>COVEREDRATIO</value>
-											<minimum>0.84</minimum>
+											<minimum>0.89</minimum>
 										</limit>
 									</limits>
 								</rule>

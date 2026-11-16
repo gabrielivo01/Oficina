@@ -154,12 +154,30 @@ Observabilidade (Prometheus + Grafana):
   `management.metrics.distribution.percentiles-histogram.http.server.requests=true`
   habilita os buckets usados pelo painel de latência p95.
 - `src/main/resources/logback-spring.xml`: perfis `docker`/`k8s` logam em JSON
-  (via `LogstashEncoder`, inclui todo o MDC automaticamente); demais perfis
-  (incluindo o default local) logam texto legível com o `correlationId` visível.
-- `infrastructure/observability/CorrelationIdFilter`: propaga/gera
-  `X-Correlation-Id` por requisição via MDC — correlaciona todas as linhas de
-  log de uma mesma requisição, e a mesma correlação pode ser repassada entre
-  serviços (o header é ecoado na resposta).
+  (via `LogstashEncoder`, inclui todo o MDC automaticamente: `traceId`, `spanId`,
+  `correlationId`); demais perfis (incluindo o default local) logam texto legível
+  com `[traceId,spanId] [correlationId]`.
+- `infrastructure/observability/CorrelationIdFilter`: `X-Correlation-Id` por
+  requisição via MDC (ecoado na resposta). Sem header de entrada, o valor é o
+  `traceId` da requisição (o mesmo do Jaeger); com header, o valor recebido é
+  mantido e gravado no span como `correlation.id` (ADR 0011).
+- Fase 4 — métricas do outbox: `oficina_outbox_publicadas_total`,
+  `oficina_outbox_falhas_total` e o gauge `oficina_outbox_pendentes`.
+
+Rastreamento distribuído (Fase 4, ADR 0011):
+- `spring-boot-starter-opentelemetry` (Micrometer Tracing + OpenTelemetry) exporta
+  spans via OTLP/HTTP para o OTel Collector, que repassa ao Jaeger
+  (`management.opentelemetry.tracing.export.otlp.endpoint`, padrão
+  `http://localhost:4318/v1/traces`; env `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`;
+  amostragem `MANAGEMENT_TRACING_SAMPLING_PROBABILITY`, padrão 1.0).
+- `traceparent` W3C nos headers AMQP (observação do `RabbitTemplate` e do listener);
+  o outbox guarda o `traceparent` de quem gravou a mensagem e o publicador continua
+  esse trace: requisição HTTP → `outbox publicar` → envio → consumo num único trace.
+- Não geram trace: execuções do agendador do outbox e requisições ao `/actuator`.
+- Validação local: subir a plataforma (`oficina-infra-k8s/local/docker-compose.yml`),
+  fazer uma requisição que muda o status de uma OS, pegar o `X-Correlation-Id` da
+  resposta e abrir `http://localhost:16686/trace/<id>` (ou
+  `curl http://localhost:16686/api/traces/<id>`).
 - Métricas de negócio custom (Micrometer, expostas em `/actuator/prometheus`):
   - `oficina_ordens_servico_abertas_total` — incrementada em `OrdemServicoService.abrir`.
   - `oficina_ordens_servico_tempo_no_status_seconds{status=...}` — Timer

@@ -48,9 +48,18 @@ public class MensagemOutbox implements Persistable<String> {
     @Column(name = "ultimo_erro", length = TAMANHO_MAXIMO_ERRO)
     private String ultimoErro;
 
+    /** W3C {@code traceparent} de quem gravou a mensagem; a publicação continua esse trace. */
+    @Column(name = "trace_parent", length = 100)
+    private String traceParent;
+
     protected MensagemOutbox() {}
 
     public MensagemOutbox(String id, String tipo, String exchange, String routingKey, String payload) {
+        this(id, tipo, exchange, routingKey, payload, null);
+    }
+
+    public MensagemOutbox(
+            String id, String tipo, String exchange, String routingKey, String payload, String traceParent) {
         exigirTexto(id, "id");
         exigirTexto(tipo, "tipo");
         exigirTexto(exchange, "exchange");
@@ -61,6 +70,7 @@ public class MensagemOutbox implements Persistable<String> {
         this.exchange = exchange;
         this.routingKey = routingKey;
         this.payload = payload;
+        this.traceParent = traceParent;
         this.criadoEm = LocalDateTime.now();
         this.tentativas = 0;
     }
@@ -137,5 +147,9 @@ public class MensagemOutbox implements Persistable<String> {
 
     public String getUltimoErro() {
         return ultimoErro;
+    }
+
+    public String getTraceParent() {
+        return traceParent;
     }
 }

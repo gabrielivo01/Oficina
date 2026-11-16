@@ -1,21 +1,21 @@
 <configuration>
 
-    <!-- Perfis docker/k8s: logs estruturados em JSON, incluindo o correlationId
-         propagado pelo CorrelationIdFilter via MDC (o encoder inclui todo o
-         MDC automaticamente). Facilita agregação/correlação em ferramentas
-         como Grafana Loki/CloudWatch Logs. -->
+    <!-- Perfis docker/k8s: logs estruturados em JSON. O encoder inclui todo o MDC automaticamente:
+         traceId e spanId (Micrometer Tracing/OpenTelemetry, os mesmos ids do Jaeger) e correlationId
+         (CorrelationIdFilter; por padrão igual ao traceId da requisição, ou o X-Correlation-Id recebido).
+         Vale também para o consumo de mensagens: o listener do RabbitMQ continua o trace do traceparent. -->
     <springProfile name="docker,k8s">
         <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
             <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
         </appender>
     </springProfile>
 
-    <!-- Demais perfis (default/dev/test): texto legível no console, com o
-         correlationId visível entre colchetes. -->
+    <!-- Demais perfis (default/local/test): texto legível no console, com traceId,spanId e o
+         correlationId entre colchetes. -->
     <springProfile name="!docker &amp; !k8s">
         <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
-                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{correlationId}] %logger{36} - %msg%n</pattern>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{traceId:-},%X{spanId:-}] [%X{correlationId:-}] %logger{36} - %msg%n</pattern>
             </encoder>
         </appender>
     </springProfile>

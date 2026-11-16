@@ -99,6 +99,7 @@ Table outbox { // V3: Transactional Outbox (ADR 0009); gravado na transação da
   enviado_em timestamp // nulo = pendente; preenchido só após o publisher confirm
   tentativas integer [not null, default: 0]
   ultimo_erro varchar(500)
+  trace_parent varchar(100) // V4: W3C traceparent de quem gravou; a publicação continua esse trace (ADR 0011)
 
   indexes {
     (enviado_em, criado_em) [name: 'idx_outbox_pendentes']

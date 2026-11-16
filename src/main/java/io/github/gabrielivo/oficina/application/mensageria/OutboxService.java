@@ -17,15 +17,19 @@ public class OutboxService {
 
     private final MensagemOutboxRepository repository;
     private final JsonMapper jsonMapper;
+    private final ContextoRastreamento contextoRastreamento;
 
-    public OutboxService(MensagemOutboxRepository repository, JsonMapper jsonMapper) {
+    public OutboxService(
+            MensagemOutboxRepository repository, JsonMapper jsonMapper, ContextoRastreamento contextoRastreamento) {
         this.repository = repository;
         this.jsonMapper = jsonMapper;
+        this.contextoRastreamento = contextoRastreamento;
     }
 
     /**
      * Monta o envelope e o grava no outbox. Exige transação ativa: a mensagem só existe se a mudança de estado que a
-     * originou for confirmada (nunca publicar direto de dentro de {@code @Transactional}).
+     * originou for confirmada (nunca publicar direto de dentro de {@code @Transactional}). Guarda também o
+     * {@code traceparent} atual, para a publicação e o consumo ficarem no mesmo trace da requisição.
      *
      * @return o envelope gravado
      */
@@ -35,7 +39,12 @@ public class OutboxService {
         EnvelopeMensagem envelope = new EnvelopeMensagem(
                 UUID.randomUUID().toString(), tipo, osId, osId, occurredAt, jsonMapper.valueToTree(payload));
         repository.save(new MensagemOutbox(
-                envelope.messageId(), tipo, exchange, routingKey, jsonMapper.writeValueAsString(envelope)));
+                envelope.messageId(),
+                tipo,
+                exchange,
+                routingKey,
+                jsonMapper.writeValueAsString(envelope),
+                contextoRastreamento.traceparentAtual()));
         return envelope;
     }
 
