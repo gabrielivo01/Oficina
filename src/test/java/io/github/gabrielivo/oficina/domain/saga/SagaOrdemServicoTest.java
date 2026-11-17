@@ -385,6 +385,27 @@ class SagaOrdemServicoTest {
         assertEquals(SituacaoSaga.COMPENSADA, saga.getSituacao());
     }
 
+    @Test
+    void resultadoDoPagamentoForaDaEtapaEsperadaEIgnorado() {
+        Map<String, Object> pagamento = Map.of("cobrancaId", "cobranca-1", "pagamentoIdExterno", "pagamento-1");
+
+        SagaOrdemServico antesDaAprovacao = ateAguardarRespostaOrcamento();
+        assertFalse(receber(antesDaAprovacao, "PagamentoConfirmado", pagamento).aplicada());
+        assertFalse(receber(antesDaAprovacao, "PagamentoRejeitado", pagamento).aplicada());
+        assertEquals(EtapaSaga.AGUARDANDO_RESPOSTA_ORCAMENTO, antesDaAprovacao.getEtapaAtual());
+
+        SagaOrdemServico jaPaga = ateAguardarInicioExecucao();
+        assertFalse(receber(jaPaga, "PagamentoConfirmado", pagamento).aplicada());
+        assertFalse(receber(jaPaga, "PagamentoRejeitado", pagamento).aplicada());
+        assertEquals(EtapaSaga.AGUARDANDO_INICIO_EXECUCAO, jaPaga.getEtapaAtual());
+
+        SagaOrdemServico compensada = ateAguardarRespostaOrcamento();
+        receber(compensada, "OrcamentoRecusado", Map.of("observacao", "Caro"));
+        receber(compensada, "ReservaPecasLiberada", Map.of("reservaId", "reserva-1"));
+        assertFalse(receber(compensada, "PagamentoRejeitado", pagamento).aplicada());
+        assertEquals(SituacaoSaga.COMPENSADA, compensada.getSituacao());
+    }
+
     private SagaOrdemServico ateAguardarRespostaOrcamento() {
         SagaOrdemServico saga = novaSaga();
         saga.iniciar(AGORA);
