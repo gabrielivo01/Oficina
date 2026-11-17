@@ -1,0 +1,133 @@
+%% Arquitetura geral da Fase 4: microsserviços, bancos, comunicação, observabilidade e entrega.
+%% Fonte dos detalhes: k8s/ de cada serviço, oficina-infra-k8s/local/rabbitmq/definitions.json e os ADRs 0004-0013.
+flowchart TB
+    %% ---------- Atores ----------
+    subgraph Atores["Usuários"]
+        direction LR
+        Cliente(["Cliente"])
+        Staff(["Atendente / Mecânico"])
+    end
+
+    %% ---------- Borda ----------
+    subgraph Borda["Borda"]
+        direction LR
+        Lambda["oficina-auth-lambda<br/>login por CPF → JWT tipo=CLIENTE"]
+        Ingress["Ingress NGINX<br/>(API Gateway na AWS)"]
+    end
+
+    %% ---------- Microsserviços ----------
+    subgraph K8s["Kubernetes · namespace oficina"]
+        direction LR
+        OS["<b>OS Service</b> (oficina)<br/>clientes, veículos, OS, histórico<br/>orquestrador da Saga · JWT staff<br/>HPA 2–5 réplicas"]
+        EX["<b>Execution Service</b><br/>catálogo, estoque, reservas<br/>fila de diagnóstico e reparo<br/>HPA 1–3 réplicas"]
+        BI["<b>Billing Service</b><br/>orçamentos, cobranças, pagamentos<br/>webhook do gateway<br/>HPA 1–3 réplicas"]
+    end
+
+    %% ---------- Dados (um banco por serviço) ----------
+    subgraph Dados["Dados · um banco por serviço"]
+        direction LR
+        OSDB[("PostgreSQL OS<br/>OS, Saga, outbox, inbox<br/>Flyway")]
+        EXDB[("PostgreSQL Execution<br/>peças, reservas, tarefas<br/>outbox, inbox · Flyway")]
+        BIDB[("MongoDB rs0<br/>orçamentos, cobranças<br/>outbox, inbox · transações")]
+    end
+
+    %% ---------- Mensageria ----------
+    subgraph RMQ["RabbitMQ · filas quorum"]
+        direction TB
+        XCMD{{"exchange<br/>oficina.comandos"}}
+        XEVT{{"exchange<br/>oficina.eventos"}}
+        QEX[["execution.comandos"]]
+        QBI[["billing.comandos"]]
+        QOS[["os.saga.eventos"]]
+        DLX{{"exchange<br/>oficina.dlx"}}
+        DLQ[["DLQs<br/>execution.comandos.dlq<br/>billing.comandos.dlq<br/>os.saga.eventos.dlq"]]
+        XCMD -->|"execution.comandos"| QEX
+        XCMD -->|"billing.comandos"| QBI
+        XEVT -->|"binding #35;"| QOS
+        QEX -.->|"3 tentativas"| DLX
+        QBI -.->|"3 tentativas"| DLX
+        QOS -.->|"3 tentativas"| DLX
+        DLX --> DLQ
+    end
+
+    %% ---------- Externos ----------
+    subgraph Externos["Serviços externos"]
+        direction LR
+        MP["Mercado Pago<br/>Checkout Pro<br/>(gateway fake no kind)"]
+        SMTP["SMTP<br/>(MailHog no ambiente local)"]
+    end
+
+    %% ---------- Observabilidade ----------
+    subgraph Obs["Observabilidade · namespace plataforma / monitoring"]
+        direction LR
+        OTel["OpenTelemetry Collector"]
+        Jaeger["Jaeger<br/>traces distribuídos"]
+        Prom["Prometheus<br/>ServiceMonitors + alertas"]
+        Grafana["Grafana<br/>Visão Geral, Saga,<br/>Execution, Billing"]
+        OTel --> Jaeger
+        Prom --> Grafana
+    end
+
+    %% ---------- Entrega ----------
+    subgraph CICD["Entrega · GitHub Actions"]
+        direction LR
+        CI["CI: testes, ArchUnit, JaCoCo ≥ 80%,<br/>Testcontainers, SonarCloud Quality Gate"]
+        GHCR["GHCR<br/>imagens dos serviços"]
+        CD["CD: deploy no kind<br/>+ smoke test E2E da Saga"]
+        CI --> GHCR --> CD
+    end
+
+    %% ---------- Fluxos síncronos (REST) ----------
+    Cliente -->|"CPF"| Lambda
+    Lambda -->|"REST · X-Internal-Api-Key<br/>GET /internal/clientes/{cpf}/status"| OS
+    Cliente -->|"REST + JWT<br/>aprova orçamento, acompanha OS"| Ingress
+    Staff -->|"REST + JWT<br/>abre OS, diagnóstico, reparo"| Ingress
+    Ingress --> OS
+    Ingress --> EX
+    Ingress --> BI
+
+    %% ---------- Persistência ----------
+    OS --> OSDB
+    EX --> EXDB
+    BI --> BIDB
+
+    %% ---------- Comunicação assíncrona (Saga orquestrada) ----------
+    OS ==>|"comandos via outbox<br/>SolicitarDiagnostico, IniciarExecucao,<br/>GerarOrcamento, CriarCobranca, compensações"| XCMD
+    QEX ==>|"consome"| EX
+    QBI ==>|"consome"| BI
+    EX ==>|"eventos via outbox<br/>DiagnosticoConcluido, ExecucaoFinalizada..."| XEVT
+    BI ==>|"eventos via outbox<br/>OrcamentoAprovado, PagamentoConfirmado..."| XEVT
+    OS ==>|"StatusOrdemServicoAlterado"| XEVT
+    QOS ==>|"consome (Saga + notificação)"| OS
+
+    %% ---------- Integrações externas ----------
+    BI -->|"cria preferência / consulta pagamento"| MP
+    MP -->|"webhook assinado"| BI
+    OS -->|"e-mail de status"| SMTP
+    BI -->|"e-mail de cobrança"| SMTP
+
+    %% ---------- Telemetria ----------
+    OS -.->|"OTLP"| OTel
+    EX -.->|"OTLP"| OTel
+    BI -.->|"OTLP"| OTel
+    Prom -.->|"/actuator/prometheus"| OS
+    Prom -.->|"/actuator/prometheus"| EX
+    Prom -.->|"/actuator/prometheus"| BI
+    Prom -.->|"/metrics/per-object"| RMQ
+
+    %% ---------- Entrega ----------
+    CD -.->|"implanta"| K8s
+
+    %% ---------- Estilos ----------
+    classDef servico fill:#dbeafe,stroke:#1d4ed8,color:#0b1f4d
+    classDef banco fill:#dcfce7,stroke:#15803d,color:#052e16
+    classDef fila fill:#fef3c7,stroke:#b45309,color:#451a03
+    classDef dlq fill:#fee2e2,stroke:#b91c1c,color:#450a0a
+    classDef obs fill:#f3e8ff,stroke:#7e22ce,color:#2e1065
+    classDef externo fill:#f1f5f9,stroke:#475569,color:#0f172a
+    class OS,EX,BI servico
+    class OSDB,EXDB,BIDB banco
+    class XCMD,XEVT,QEX,QBI,QOS fila
+    class DLX,DLQ dlq
+    class OTel,Jaeger,Prom,Grafana obs
+    class MP,SMTP,Lambda,Ingress,CI,GHCR,CD externo
