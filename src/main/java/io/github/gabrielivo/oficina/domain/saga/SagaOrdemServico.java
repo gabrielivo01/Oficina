@@ -350,22 +350,36 @@ public class SagaOrdemServico {
             prazoExpiracao = agora.plus(prazoCompensacao);
             return new DecisaoSaga(true, null, List.of(comandoEstornarPagamento()));
         }
-        if (situacao != SituacaoSaga.EM_ANDAMENTO || etapaAtual != EtapaSaga.AGUARDANDO_PAGAMENTO) {
+        boolean antesDaCobrancaCriada = pagamentoAntesDaCobrancaCriada();
+        if (!antesDaCobrancaCriada
+                && (situacao != SituacaoSaga.EM_ANDAMENTO || etapaAtual != EtapaSaga.AGUARDANDO_PAGAMENTO)) {
             return DecisaoSaga.ignorada();
         }
         pagamentoIdExterno = texto(evento.payload(), "pagamentoIdExterno");
         cobrancaId = texto(evento.payload(), "cobrancaId");
         etapaAtual = EtapaSaga.AGUARDANDO_INICIO_EXECUCAO;
         prazoExpiracao = null;
+        // Pagamento processado antes de CobrancaCriada: a OS passa por AGUARDANDO_PAGAMENTO agora e a cobrança que
+        // chegar depois é ignorada.
         return new DecisaoSaga(
                 true,
-                null,
+                antesDaCobrancaCriada ? StatusOrdemServico.AGUARDANDO_PAGAMENTO : null,
                 List.of(new ComandoSaga(
                         "IniciarExecucao", Map.of("reservaId", valorOuVazio(reservaId), "cobrancaId", cobrancaId))));
     }
 
+    /**
+     * O Billing publica {@code CobrancaCriada} e o resultado do pagamento na mesma transação quando o gateway já
+     * decide na criação da cobrança. Com mais de uma réplica consumindo a fila, o resultado pode ser processado antes
+     * da cobrança; não pode ser descartado, senão a OS fica parada até o prazo de pagamento vencer.
+     */
+    private boolean pagamentoAntesDaCobrancaCriada() {
+        return situacao == SituacaoSaga.EM_ANDAMENTO && etapaAtual == EtapaSaga.AGUARDANDO_COBRANCA;
+    }
+
     private DecisaoSaga pagamentoRejeitado(EventoSaga evento, Instant agora, Duration prazoCompensacao) {
-        if (situacao != SituacaoSaga.EM_ANDAMENTO || etapaAtual != EtapaSaga.AGUARDANDO_PAGAMENTO) {
+        if (!pagamentoAntesDaCobrancaCriada()
+                && (situacao != SituacaoSaga.EM_ANDAMENTO || etapaAtual != EtapaSaga.AGUARDANDO_PAGAMENTO)) {
             return DecisaoSaga.ignorada();
         }
         motivoCompensacao = MotivoCompensacao.PAGAMENTO_REJEITADO;

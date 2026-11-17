@@ -18,6 +18,7 @@ public final class BillingFalso extends ParticipanteFalso {
     private final Map<String, String> orcamentos = new HashMap<>();
     private final Map<String, String> cobrancas = new HashMap<>();
     private Duration prazoPagamento = Duration.ofMinutes(30);
+    private boolean pagamentoAprovadoAntesDaCobranca;
 
     public BillingFalso(CatalogoContratos catalogo, Consumer<EnvelopeMensagem> publicarEvento) {
         super(catalogo, publicarEvento);
@@ -31,6 +32,14 @@ public final class BillingFalso extends ParticipanteFalso {
     /** Prazo usado no {@code expiraEm} das próximas cobranças ({@code Duration.ZERO} = vencem ao serem criadas). */
     public void prazoPagamento(Duration prazo) {
         this.prazoPagamento = prazo;
+    }
+
+    /**
+     * Imita o gateway que aprova na criação da cobrança, entregando o pior caso de ordem: {@code PagamentoConfirmado}
+     * chega ao OS Service antes de {@code CobrancaCriada} (réplicas consumindo a fila em paralelo).
+     */
+    public void aprovarPagamentoAntesDaCobrancaCriada() {
+        this.pagamentoAprovadoAntesDaCobranca = true;
     }
 
     public void responderOrcamento(String osId, boolean aprovado) {
@@ -55,7 +64,10 @@ public final class BillingFalso extends ParticipanteFalso {
         switch (comando.type()) {
             case "GerarOrcamento" ->
                 publicar(catalogo.evento("OrcamentoGerado", osId, Map.of("orcamentoId", orcamento(osId))));
-            case "CriarCobranca" ->
+            case "CriarCobranca" -> {
+                if (pagamentoAprovadoAntesDaCobranca) {
+                    publicar(catalogo.evento("PagamentoConfirmado", osId, Map.of("cobrancaId", cobranca(osId))));
+                }
                 publicar(catalogo.evento(
                         "CobrancaCriada",
                         osId,
@@ -66,6 +78,7 @@ public final class BillingFalso extends ParticipanteFalso {
                                 orcamento(osId),
                                 "expiraEm",
                                 Instant.now().plus(prazoPagamento).toString())));
+            }
             case "CancelarCobranca" ->
                 publicar(catalogo.evento("CobrancaCancelada", osId, Map.of("cobrancaId", cobranca(osId))));
             case "EstornarPagamento" ->

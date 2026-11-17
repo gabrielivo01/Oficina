@@ -564,6 +564,11 @@ Billing publica `PagamentoConfirmado` em vez deste evento para que a Saga execut
 Billing Service → OS Service, após confirmar o pagamento **consultando o gateway** (passo 7a). O orquestrador
 envia `IniciarExecucao`.
 
+**Ordem não garantida:** quando o gateway já aprova (ou rejeita) na criação da cobrança, o Billing publica
+`CobrancaCriada` e `PagamentoConfirmado`/`PagamentoRejeitado` na mesma transação, e as réplicas do OS Service podem
+processá-los em qualquer ordem. O orquestrador aceita o resultado do pagamento mesmo antes de `CobrancaCriada` (a OS
+passa por `AGUARDANDO_PAGAMENTO` nesse momento) e ignora a `CobrancaCriada` que chegar depois.
+
 | Campo | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
 | `cobrancaId` | UUID | sim | Cobrança paga. |
