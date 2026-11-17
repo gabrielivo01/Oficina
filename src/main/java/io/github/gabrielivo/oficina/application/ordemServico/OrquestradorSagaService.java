@@ -22,6 +22,8 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -298,7 +300,7 @@ public class OrquestradorSagaService {
         // Mesma métrica do OrdemServicoService.entregar: tempo que a OS passou no status que está deixando.
         meterRegistry
                 .timer("oficina.ordens_servico.tempo_no_status", "status", anterior.name())
-                .record(Duration.between(statusDesde, LocalDateTime.now()));
+                .record(Duration.between(statusDesde.atZone(ZoneId.systemDefault()), ZonedDateTime.now()));
     }
 
     private void registrarMetricas(
