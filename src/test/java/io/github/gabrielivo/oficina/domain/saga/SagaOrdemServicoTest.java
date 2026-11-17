@@ -2,6 +2,7 @@ package io.github.gabrielivo.oficina.domain.saga;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -314,6 +315,74 @@ class SagaOrdemServicoTest {
         assertFalse(divergente.aplicada());
         assertEquals(SituacaoSaga.COMPENSANDO, saga.getSituacao());
         assertEquals(EtapaSaga.COMPENSANDO_COBRANCA, saga.getEtapaAtual());
+    }
+
+    /**
+     * Com o gateway aprovando na criação da cobrança, o Billing publica {@code CobrancaCriada} e
+     * {@code PagamentoConfirmado} juntos; com várias réplicas consumindo a fila, o pagamento pode ser processado
+     * primeiro. Ele não pode ser descartado: a Saga segue para a execução e ignora a cobrança que chega depois.
+     */
+    @Test
+    void pagamentoConfirmadoAntesDaCobrancaCriadaSegueParaAExecucao() {
+        SagaOrdemServico saga = ateAguardarRespostaOrcamento();
+        receber(saga, "OrcamentoAprovado", Map.of("orcamentoId", "orcamento-1", "valorTotal", new BigDecimal("25.00")));
+
+        DecisaoSaga pagamento = receber(
+                saga, "PagamentoConfirmado", Map.of("cobrancaId", "cobranca-1", "pagamentoIdExterno", "pagamento-1"));
+
+        assertTrue(pagamento.aplicada());
+        assertEquals(StatusOrdemServico.AGUARDANDO_PAGAMENTO, pagamento.novoStatus());
+        assertEquals("IniciarExecucao", pagamento.comandos().getFirst().tipo());
+        assertEquals("cobranca-1", pagamento.comandos().getFirst().payload().get("cobrancaId"));
+        assertEquals("reserva-1", pagamento.comandos().getFirst().payload().get("reservaId"));
+        assertEquals(EtapaSaga.AGUARDANDO_INICIO_EXECUCAO, saga.getEtapaAtual());
+        assertEquals("cobranca-1", saga.getCobrancaId());
+        assertNull(saga.getPrazoExpiracao());
+
+        DecisaoSaga cobrancaAtrasada = receber(
+                saga,
+                "CobrancaCriada",
+                Map.of(
+                        "cobrancaId",
+                        "cobranca-1",
+                        "expiraEm",
+                        AGORA.plus(PRAZO_PAGAMENTO).toString()));
+
+        assertFalse(cobrancaAtrasada.aplicada());
+        assertEquals(EtapaSaga.AGUARDANDO_INICIO_EXECUCAO, saga.getEtapaAtual());
+        assertNull(saga.getPrazoExpiracao());
+        assertEquals(
+                StatusOrdemServico.EM_EXECUCAO,
+                receber(saga, "ExecucaoIniciada", Map.of()).novoStatus());
+    }
+
+    @Test
+    void pagamentoRejeitadoAntesDaCobrancaCriadaLiberaAReserva() {
+        SagaOrdemServico saga = ateAguardarRespostaOrcamento();
+        receber(saga, "OrcamentoAprovado", Map.of("orcamentoId", "orcamento-1", "valorTotal", new BigDecimal("25.00")));
+
+        DecisaoSaga rejeicao = receber(
+                saga, "PagamentoRejeitado", Map.of("cobrancaId", "cobranca-1", "motivo", "cc_rejected_other_reason"));
+
+        assertTrue(rejeicao.aplicada());
+        assertEquals("LiberarReservaPecas", rejeicao.comandos().getFirst().tipo());
+        assertEquals(SituacaoSaga.COMPENSANDO, saga.getSituacao());
+        assertEquals(MotivoCompensacao.PAGAMENTO_REJEITADO, saga.getMotivoCompensacao());
+
+        assertFalse(receber(
+                        saga,
+                        "CobrancaCriada",
+                        Map.of(
+                                "cobrancaId",
+                                "cobranca-1",
+                                "expiraEm",
+                                AGORA.plus(PRAZO_PAGAMENTO).toString()))
+                .aplicada());
+        assertEquals(
+                StatusOrdemServico.CANCELADA,
+                receber(saga, "ReservaPecasLiberada", Map.of("reservaId", "reserva-1"))
+                        .novoStatus());
+        assertEquals(SituacaoSaga.COMPENSADA, saga.getSituacao());
     }
 
     private SagaOrdemServico ateAguardarRespostaOrcamento() {

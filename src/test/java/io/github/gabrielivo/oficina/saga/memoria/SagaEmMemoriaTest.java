@@ -121,6 +121,32 @@ class SagaEmMemoriaTest {
     }
 
     @Test
+    void pagamentoAprovadoNaCriacaoEProcessadoAntesDaCobrancaNaoDevePararAOs() {
+        saga.billing().aprovarPagamentoAntesDaCobrancaCriada();
+        String osId = saga.abrirOrdemServico();
+        saga.concluirDiagnostico(osId);
+
+        saga.responderOrcamento(osId, true);
+
+        assertThat(saga.barramento().eventosEntregues(osId))
+                .containsSubsequence("PagamentoConfirmado", "CobrancaCriada", "ExecucaoIniciada");
+        assertThat(saga.status(osId)).isEqualTo(StatusOrdemServico.EM_EXECUCAO);
+
+        saga.finalizarExecucao(osId);
+
+        assertThat(saga.status(osId)).isEqualTo(StatusOrdemServico.FINALIZADA);
+        assertThat(saga.situacao(osId)).isEqualTo(SituacaoSaga.CONCLUIDA);
+        assertThat(saga.billing().comandosRecebidos(osId)).containsExactly("GerarOrcamento", "CriarCobranca");
+        assertThat(saga.ordem(osId).getHistorico())
+                .extracting(h -> h.getStatusNovo())
+                .containsSubsequence(
+                        StatusOrdemServico.AGUARDANDO_APROVACAO,
+                        StatusOrdemServico.AGUARDANDO_PAGAMENTO,
+                        StatusOrdemServico.EM_EXECUCAO,
+                        StatusOrdemServico.FINALIZADA);
+    }
+
+    @Test
     void eventosEntreguesEmDuplicidadeNaoDevemAlterarOResultado() {
         saga.entregarEventosEmDuplicidade();
         String osId = aguardandoPagamento();
