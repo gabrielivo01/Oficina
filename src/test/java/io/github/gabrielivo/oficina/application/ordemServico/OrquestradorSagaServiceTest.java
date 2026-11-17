@@ -1,6 +1,7 @@
 package io.github.gabrielivo.oficina.application.ordemServico;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -22,6 +23,7 @@ import io.github.gabrielivo.oficina.domain.saga.SagaOrdemServico;
 import io.github.gabrielivo.oficina.domain.saga.SagaOrdemServicoRepository;
 import io.github.gabrielivo.oficina.domain.saga.SituacaoSaga;
 import io.github.gabrielivo.oficina.domain.veiculo.Veiculo;
+import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -55,6 +57,8 @@ class OrquestradorSagaServiceTest {
 
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+
     private OrquestradorSagaService service;
 
     @BeforeEach
@@ -70,7 +74,7 @@ class OrquestradorSagaServiceTest {
                         "os.saga.eventos",
                         new MensageriaProperties.Outbox(true, Duration.ofSeconds(1), 50, Duration.ofSeconds(5))),
                 new SagaProperties(Duration.ofMinutes(30), Duration.ofSeconds(30), Duration.ofSeconds(1), 3),
-                new SimpleMeterRegistry(),
+                meterRegistry,
                 jsonMapper);
     }
 
@@ -117,6 +121,30 @@ class OrquestradorSagaServiceTest {
         assertEquals(1, saga.getHistorico().size());
         verify(publicadorStatus).salvarEPublicar(os);
         verify(sagaRepository).save(saga);
+    }
+
+    @Test
+    void mudancaDeStatusPelaSagaRegistraOTempoNoStatusAnterior() {
+        OrdemServico os = ordemServico();
+        SagaOrdemServico saga = new SagaOrdemServico(os.getId(), AGORA);
+        saga.iniciar(AGORA);
+        when(sagaRepository.findById(os.getId())).thenReturn(Optional.of(saga));
+        when(ordemServicoRepository.findById(os.getId())).thenReturn(Optional.of(os));
+
+        service.processar(new EnvelopeMensagem(
+                "message-1",
+                "DiagnosticoIniciado",
+                os.getId(),
+                os.getId(),
+                AGORA.plusSeconds(1),
+                jsonMapper.valueToTree(Map.of("tarefaId", "tarefa-1"))));
+
+        Timer tempoNoStatus = meterRegistry
+                .find("oficina.ordens_servico.tempo_no_status")
+                .tag("status", "RECEBIDA")
+                .timer();
+        assertNotNull(tempoNoStatus);
+        assertEquals(1, tempoNoStatus.count());
     }
 
     @Test
